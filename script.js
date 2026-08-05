@@ -14,10 +14,10 @@
   const PASSWORD_SHA256 = 'e1b3da7873109b1c49fed74139832446750e5b88b4dd096a57745d6858d93d31';
 
   const SEED_SHIPMENTS = [
-    { track: 'CN2026118', clientCode: '126', status: 'arrived',  weightKg: 3.2, priceSom: 800,  updatedAt: '2026-08-03T14:20:00' },
-    { track: 'CN2026094', clientCode: '126', status: 'arrived',  weightKg: 1.4, priceSom: 350,  updatedAt: '2026-08-04T09:05:00' },
-    { track: 'CN2025871', clientCode: '042', status: 'received', weightKg: 5.0, priceSom: 1250, updatedAt: '2026-07-29T17:40:00' },
-    { track: 'CN2026140', clientCode: '088', status: 'arrived',  weightKg: 0.8, priceSom: 200,  updatedAt: '2026-08-04T07:12:00' }
+    { track: 'CN2026118', clientCode: '126', status: 'arrived',  weightKg: 3.2, priceSom: 800,  createdAt: '2026-08-03T14:20:00', updatedAt: '2026-08-03T14:20:00' },
+    { track: 'CN2026094', clientCode: '126', status: 'arrived',  weightKg: 1.4, priceSom: 350,  createdAt: '2026-08-04T09:05:00', updatedAt: '2026-08-04T09:05:00' },
+    { track: 'CN2025871', clientCode: '042', status: 'received', weightKg: 5.0, priceSom: 1250, createdAt: '2026-07-25T11:00:00', updatedAt: '2026-07-29T17:40:00' },
+    { track: 'CN2026140', clientCode: '088', status: 'arrived',  weightKg: 0.8, priceSom: 200,  createdAt: '2026-08-04T07:12:00', updatedAt: '2026-08-04T07:12:00' }
   ];
 
   /* ============ i18n ============ */
@@ -133,7 +133,19 @@
       toast_issued: 'Выдано: {track}',
       toast_quick_issued: 'Клиенту №{code} выдано посылок: {count}',
       toast_scan_track: 'Трек-код считан',
-      toast_scan_client: 'Код клиента считан'
+      toast_scan_client: 'Код клиента считан',
+
+      report_title: 'Отчёт за месяц',
+      report_subtitle: 'Сводка по приёму, выдаче и выручке',
+      report_accepted: 'Принято',
+      report_issued: 'Выдано',
+      report_weight: 'Вес',
+      report_revenue: 'Выручка',
+      report_clients: 'Клиенты',
+      report_avg: 'Средний чек',
+      report_empty: 'Нет данных за этот месяц',
+      month_prev_aria: 'Предыдущий месяц',
+      month_next_aria: 'Следующий месяц'
     },
 
     ky: {
@@ -246,7 +258,19 @@
       toast_issued: 'Берилди: {track}',
       toast_quick_issued: '№{code} кардарга берилди: {count}',
       toast_scan_track: 'Трек-код окулду',
-      toast_scan_client: 'Кардар коду окулду'
+      toast_scan_client: 'Кардар коду окулду',
+
+      report_title: 'Айлык отчет',
+      report_subtitle: 'Кабыл алуу, берүү жана киреше боюнча жыйынтык',
+      report_accepted: 'Кабыл алынды',
+      report_issued: 'Берилди',
+      report_weight: 'Салмак',
+      report_revenue: 'Киреше',
+      report_clients: 'Кардарлар',
+      report_avg: 'Орточо чек',
+      report_empty: 'Бул айда маалымат жок',
+      month_prev_aria: 'Мурунку ай',
+      month_next_aria: 'Кийинки ай'
     }
   };
 
@@ -260,6 +284,8 @@
     priceManual: false,
     selected: new Set(),
     unlocked: false,
+    reportYear: new Date().getFullYear(),
+    reportMonth: new Date().getMonth(),
     settings: {
       pinEnabled: false,
       pinHash: ''
@@ -315,6 +341,7 @@
     updatePriceFormula();
     renderStats();
     renderTable();
+    renderReport();
     updateBulkBar();
   }
 
@@ -810,13 +837,15 @@
   }
 
   function normalizeShipment(s) {
+    const updatedAt = s.updatedAt || new Date().toISOString();
     return {
       track: normalizeTrack(s.track),
       clientCode: normalizeClientCode(s.clientCode),
       status: s.status === 'received' ? 'received' : 'arrived',
       weightKg: Number(s.weightKg) || 0,
       priceSom: Math.round(Number(s.priceSom) || 0),
-      updatedAt: s.updatedAt || new Date().toISOString()
+      createdAt: s.createdAt || updatedAt,
+      updatedAt
     };
   }
 
@@ -990,6 +1019,126 @@
   function refreshUI() {
     renderStats();
     renderTable();
+    renderReport();
+  }
+
+  /* ============ ОТЧЁТ ЗА МЕСЯЦ ============ */
+
+  function shiftReportMonth(delta) {
+    const d = new Date(state.reportYear, state.reportMonth + delta, 1);
+    state.reportYear = d.getFullYear();
+    state.reportMonth = d.getMonth();
+    renderReport();
+  }
+
+  function formatMonthLabel(year, month) {
+    const locale = state.lang === 'ky' ? 'ky-KG' : 'ru-RU';
+    try {
+      return new Date(year, month, 1).toLocaleDateString(locale, {
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return (month + 1) + '.' + year;
+    }
+  }
+
+  function isInReportMonth(isoString) {
+    const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) return false;
+    return d.getFullYear() === state.reportYear && d.getMonth() === state.reportMonth;
+  }
+
+  function getActivityDate(shipment) {
+    return shipment.createdAt || shipment.updatedAt;
+  }
+
+  function getMonthShipments() {
+    return state.shipments
+      .filter(s => {
+        const createdInMonth = isInReportMonth(getActivityDate(s));
+        const issuedInMonth = s.status === 'received' && isInReportMonth(s.updatedAt);
+        return createdInMonth || issuedInMonth;
+      })
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  }
+
+  function renderReport() {
+    const label = document.getElementById('monthLabel');
+    if (label) {
+      const text = formatMonthLabel(state.reportYear, state.reportMonth);
+      label.textContent = text.charAt(0).toUpperCase() + text.slice(1);
+    }
+
+    const prevBtn = document.getElementById('monthPrev');
+    const nextBtn = document.getElementById('monthNext');
+    if (prevBtn) prevBtn.setAttribute('aria-label', t('month_prev_aria'));
+    if (nextBtn) nextBtn.setAttribute('aria-label', t('month_next_aria'));
+
+    const now = new Date();
+    const isCurrentOrFuture =
+      state.reportYear > now.getFullYear() ||
+      (state.reportYear === now.getFullYear() && state.reportMonth >= now.getMonth());
+    if (nextBtn) nextBtn.disabled = isCurrentOrFuture;
+
+    const accepted = state.shipments.filter(s => isInReportMonth(getActivityDate(s)));
+    const issued = state.shipments.filter(
+      s => s.status === 'received' && isInReportMonth(s.updatedAt)
+    );
+    const monthList = getMonthShipments();
+
+    const weight = accepted.reduce((sum, s) => sum + (Number(s.weightKg) || 0), 0);
+    const revenue = issued.reduce((sum, s) => sum + (Number(s.priceSom) || 0), 0);
+    const clients = new Set(monthList.map(s => s.clientCode).filter(Boolean));
+    const avg = issued.length ? Math.round(revenue / issued.length) : 0;
+
+    const set = (id, text) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    };
+
+    set('reportAccepted', String(accepted.length));
+    set('reportIssued', String(issued.length));
+    set('reportWeight', (Math.round(weight * 100) / 100) + ' ' + t('kg'));
+    set('reportRevenue', formatSom(revenue));
+    set('reportClients', String(clients.size));
+    set('reportAvg', formatSom(avg));
+
+    const body = document.getElementById('reportBody');
+    const empty = document.getElementById('reportEmpty');
+    if (!body) return;
+
+    body.innerHTML = '';
+
+    if (monthList.length === 0) {
+      if (empty) {
+        empty.hidden = false;
+        empty.textContent = t('report_empty');
+      }
+      return;
+    }
+
+    if (empty) empty.hidden = true;
+
+    monthList.forEach((shipment, index) => {
+      const tr = document.createElement('tr');
+      tr.style.animationDelay = (index * 0.03) + 's';
+      tr.innerHTML =
+        '<td class="cell-mono">' + escapeHtml(shipment.track) + '</td>' +
+        '<td class="cell-mono">' + escapeHtml(formatClientLabel(shipment.clientCode)) + '</td>' +
+        '<td class="cell-mono">' + shipment.weightKg + ' ' + t('kg') + '</td>' +
+        '<td class="cell-mono">' + formatSom(shipment.priceSom) + '</td>' +
+        '<td>' + formatDateShort(shipment.updatedAt) + '</td>' +
+        '<td><span class="badge badge--' + shipment.status + '">' +
+          (shipment.status === 'received' ? t('status_received') : t('status_arrived')) +
+        '</span></td>';
+      body.appendChild(tr);
+    });
+  }
+
+  function initReportUI() {
+    document.getElementById('monthPrev')?.addEventListener('click', () => shiftReportMonth(-1));
+    document.getElementById('monthNext')?.addEventListener('click', () => shiftReportMonth(1));
   }
 
   /* ============ ПРИЁМ / ВЫДАЧА ============ */
@@ -1009,13 +1158,15 @@
       return { ok: false, error: t('err_track_exists') };
     }
 
+    const now = new Date().toISOString();
     const shipment = {
       track,
       clientCode,
       status: 'arrived',
       weightKg,
       priceSom,
-      updatedAt: new Date().toISOString()
+      createdAt: now,
+      updatedAt: now
     };
 
     state.shipments.unshift(shipment);
@@ -1435,6 +1586,7 @@
     initReceiveForm();
     initSearchAndFilters();
     initBulkActions();
+    initReportUI();
     initScannerButtons();
 
     if (!isDeviceAuthorized()) {

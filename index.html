@@ -314,6 +314,69 @@
 
     </div>
 
+    <!-- ===== ОТЧЁТ ЗА МЕСЯЦ ===== -->
+    <section class="panel panel--report" id="reportPanel">
+      <div class="panel__head panel__head--row">
+        <div>
+          <h2 class="panel__title" data-i18n="report_title">Отчёт за месяц</h2>
+          <p class="panel__subtitle" data-i18n="report_subtitle">Сводка по приёму, выдаче и выручке</p>
+        </div>
+        <div class="month-nav" id="monthNav">
+          <button type="button" class="month-nav__btn" id="monthPrev" aria-label="Предыдущий месяц">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6"/></svg>
+          </button>
+          <p class="month-nav__label" id="monthLabel">—</p>
+          <button type="button" class="month-nav__btn" id="monthNext" aria-label="Следующий месяц">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="report-stats" id="reportStats">
+        <div class="report-stat">
+          <p class="report-stat__label" data-i18n="report_accepted">Принято</p>
+          <p class="report-stat__value" id="reportAccepted">0</p>
+        </div>
+        <div class="report-stat">
+          <p class="report-stat__label" data-i18n="report_issued">Выдано</p>
+          <p class="report-stat__value" id="reportIssued">0</p>
+        </div>
+        <div class="report-stat">
+          <p class="report-stat__label" data-i18n="report_weight">Вес</p>
+          <p class="report-stat__value" id="reportWeight">0 кг</p>
+        </div>
+        <div class="report-stat report-stat--accent">
+          <p class="report-stat__label" data-i18n="report_revenue">Выручка</p>
+          <p class="report-stat__value" id="reportRevenue">0 сом</p>
+        </div>
+        <div class="report-stat">
+          <p class="report-stat__label" data-i18n="report_clients">Клиенты</p>
+          <p class="report-stat__value" id="reportClients">0</p>
+        </div>
+        <div class="report-stat">
+          <p class="report-stat__label" data-i18n="report_avg">Средний чек</p>
+          <p class="report-stat__value" id="reportAvg">0 сом</p>
+        </div>
+      </div>
+
+      <div class="table-wrap report-table-wrap">
+        <table class="shipments-table report-table" id="reportTable">
+          <thead>
+            <tr>
+              <th data-i18n="col_track">Трек-код</th>
+              <th data-i18n="col_client">Код клиента</th>
+              <th data-i18n="col_weight">Вес</th>
+              <th data-i18n="col_price">Стоимость</th>
+              <th data-i18n="col_date">Дата</th>
+              <th data-i18n="col_status">Статус</th>
+            </tr>
+          </thead>
+          <tbody id="reportBody"></tbody>
+        </table>
+        <p class="table-empty" id="reportEmpty" data-i18n="report_empty" hidden>Нет данных за этот месяц</p>
+      </div>
+    </section>
+
     <footer class="footer">
       <p class="footer__brand" data-i18n="footer">Panda Cargo — склад</p>
     </footer>
