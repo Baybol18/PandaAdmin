@@ -1,7 +1,6 @@
 (function () {
   'use strict';
 
-  const SHIPMENTS_KEY = 'pandaCargo_shipments';
   const THEME_STORAGE_KEY = 'pandaCargo_theme';
   const LANG_STORAGE_KEY = 'pandaCargo_lang';
   const DEVICE_TOKEN_KEY = 'device_token';
@@ -13,12 +12,9 @@
   /* SHA-256 of warehouse password — plaintext is never stored */
   const PASSWORD_SHA256 = 'e1b3da7873109b1c49fed74139832446750e5b88b4dd096a57745d6858d93d31';
 
-  const SEED_SHIPMENTS = [
-    { track: 'CN2026118', clientCode: '126', status: 'arrived',  weightKg: 3.2, priceSom: 800,  createdAt: '2026-08-03T14:20:00', updatedAt: '2026-08-03T14:20:00' },
-    { track: 'CN2026094', clientCode: '126', status: 'arrived',  weightKg: 1.4, priceSom: 350,  createdAt: '2026-08-04T09:05:00', updatedAt: '2026-08-04T09:05:00' },
-    { track: 'CN2025871', clientCode: '042', status: 'received', weightKg: 5.0, priceSom: 1250, createdAt: '2026-07-25T11:00:00', updatedAt: '2026-07-29T17:40:00' },
-    { track: 'CN2026140', clientCode: '088', status: 'arrived',  weightKg: 0.8, priceSom: 200,  createdAt: '2026-08-04T07:12:00', updatedAt: '2026-08-04T07:12:00' }
-  ];
+  const db = window.PandaSupabase.createClient();
+  const STATUS_READY = window.PandaSupabase.STATUS_READY;
+  const STATUS_ISSUED = window.PandaSupabase.STATUS_ISSUED;
 
   /* ============ i18n ============ */
 
@@ -612,15 +608,15 @@
   }
 
   /** After device is trusted: either ask PIN or open the app */
-  function continueAfterDeviceAuth() {
+  async function continueAfterDeviceAuth() {
     hideDeviceAuthGate();
     if (isPinProtectionOn()) {
       showPinGate();
-    } else {
-      hidePinGate();
-      showApp();
-      refreshUI();
+      return;
     }
+    hidePinGate();
+    showApp();
+    await reloadShipments();
   }
 
   function showDeviceAuthGate() {
@@ -774,7 +770,7 @@
         }
 
         authorizeDevice();
-        continueAfterDeviceAuth();
+        await continueAfterDeviceAuth();
       } catch (error) {
         showMessage(err, t('err_crypto'));
       } finally {
@@ -812,45 +808,56 @@
 
         hidePinGate();
         showApp();
-        refreshUI();
+        await reloadShipments();
       } catch (error) {
         showMessage(err, t('err_crypto'));
       }
     });
   }
 
-  /* ============ ХРАНИЛИЩЕ ============ */
+  /* ============ ХРАНИЛИЩЕ (Supabase parcels) ============ */
 
   function loadShipments() {
-    try {
-      const raw = localStorage.getItem(SHIPMENTS_KEY);
-      if (!raw) {
-        localStorage.setItem(SHIPMENTS_KEY, JSON.stringify(SEED_SHIPMENTS));
-        return SEED_SHIPMENTS.map(s => ({ ...s }));
-      }
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return SEED_SHIPMENTS.map(s => ({ ...s }));
-      return parsed.map(normalizeShipment);
-    } catch (e) {
-      return SEED_SHIPMENTS.map(s => ({ ...s }));
+    return fetchParcels();
+  }
+
+  async function fetchParcels() {
+    let { data, error } = await db
+      .from('parcels')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error && /created_at/i.test(error.message || '')) {
+      const retry = await db.from('parcels').select('*');
+      data = retry.data;
+      error = retry.error;
     }
+
+    if (error) {
+      console.error(error);
+      showToast(error.message || 'Supabase error');
+      return [];
+    }
+
+    return (data || []).map(window.PandaSupabase.mapParcelFromDb).filter(Boolean);
   }
 
   function normalizeShipment(s) {
-    const updatedAt = s.updatedAt || new Date().toISOString();
-    return {
-      track: normalizeTrack(s.track),
-      clientCode: normalizeClientCode(s.clientCode),
-      status: s.status === 'received' ? 'received' : 'arrived',
-      weightKg: Number(s.weightKg) || 0,
-      priceSom: Math.round(Number(s.priceSom) || 0),
-      createdAt: s.createdAt || updatedAt,
-      updatedAt
-    };
+    return window.PandaSupabase.mapParcelFromDb({
+      id: s.id,
+      track_number: s.track,
+      client_code: s.clientCode,
+      status: s.status === 'received' ? STATUS_ISSUED : STATUS_READY,
+      weight: s.weightKg,
+      price: s.priceSom,
+      created_at: s.createdAt,
+      updated_at: s.updatedAt
+    });
   }
 
-  function saveShipments() {
-    localStorage.setItem(SHIPMENTS_KEY, JSON.stringify(state.shipments));
+  async function reloadShipments() {
+    state.shipments = await fetchParcels();
+    refreshUI();
   }
 
   /* ============ РЕНДЕР ============ */
@@ -1143,7 +1150,7 @@
 
   /* ============ ПРИЁМ / ВЫДАЧА ============ */
 
-  function addShipment(data) {
+  async function addShipment(data) {
     const track = normalizeTrack(data.track);
     const clientCode = normalizeClientCode(data.clientCode);
     const weightKg = Number(data.weightKg);
@@ -1154,65 +1161,111 @@
     if (!weightKg || weightKg <= 0) return { ok: false, error: t('err_weight') };
     if (priceSom < 0 || Number.isNaN(priceSom)) return { ok: false, error: t('err_price') };
 
-    if (state.shipments.some(s => s.track === track)) {
-      return { ok: false, error: t('err_track_exists') };
-    }
-
-    const now = new Date().toISOString();
-    const shipment = {
-      track,
-      clientCode,
-      status: 'arrived',
-      weightKg,
-      priceSom,
-      createdAt: now,
-      updatedAt: now
+    const payload = {
+      track_number: track,
+      weight: weightKg,
+      price: priceSom,
+      status: STATUS_READY,
+      client_code: clientCode
     };
 
-    state.shipments.unshift(shipment);
-    saveShipments();
-    refreshUI();
+    let { data: rows, error } = await db
+      .from('parcels')
+      .insert(payload)
+      .select('*')
+      .limit(1);
+
+    if (error && /client_code/i.test(error.message || '')) {
+      const retry = await db
+        .from('parcels')
+        .insert({
+          track_number: track,
+          weight: weightKg,
+          price: priceSom,
+          status: STATUS_READY
+        })
+        .select('*')
+        .limit(1);
+      rows = retry.data;
+      error = retry.error;
+    }
+
+    if (error) {
+      console.error(error);
+      return { ok: false, error: error.message || t('err_track_exists') };
+    }
+
+    const shipment = window.PandaSupabase.mapParcelFromDb((rows && rows[0]) || {
+      track_number: track,
+      weight: weightKg,
+      price: priceSom,
+      status: STATUS_READY,
+      client_code: clientCode
+    });
+
+    await reloadShipments();
     return { ok: true, shipment };
   }
 
-  function issueShipment(track) {
+  async function updateParcelStatus(track, status) {
+    const key = normalizeTrack(track);
+    const dbStatus = window.PandaSupabase.mapStatusToDb(status);
+    const now = new Date().toISOString();
+
+    let { error } = await db
+      .from('parcels')
+      .update({ status: dbStatus, updated_at: now })
+      .eq('track_number', key);
+
+    if (error && /updated_at/i.test(error.message || '')) {
+      const retry = await db
+        .from('parcels')
+        .update({ status: dbStatus })
+        .eq('track_number', key);
+      error = retry.error;
+    }
+
+    return { ok: !error, error };
+  }
+
+  async function issueShipment(track) {
     const key = normalizeTrack(track);
     const item = state.shipments.find(s => s.track === key);
     if (!item || item.status === 'received') return false;
 
-    item.status = 'received';
-    item.updatedAt = new Date().toISOString();
+    const result = await updateParcelStatus(key, 'received');
+    if (!result.ok) {
+      showToast((result.error && result.error.message) || 'Supabase error');
+      return false;
+    }
+
     state.selected.delete(key);
-    saveShipments();
-    refreshUI();
-    showToast(t('toast_issued', { track: item.track }));
+    await reloadShipments();
+    showToast(t('toast_issued', { track: key }));
     return true;
   }
 
-  function issueSelected() {
+  async function issueSelected() {
     const tracks = Array.from(state.selected);
     let count = 0;
-    const now = new Date().toISOString();
 
-    tracks.forEach(track => {
+    for (const track of tracks) {
       const item = state.shipments.find(s => s.track === track);
       if (item && item.status === 'arrived') {
-        item.status = 'received';
-        item.updatedAt = now;
-        count += 1;
+        const result = await updateParcelStatus(track, 'received');
+        if (result.ok) count += 1;
       }
-    });
+    }
 
     state.selected.clear();
 
     if (count === 0) {
       showToast(t('toast_bulk_none'));
-      refreshUI();
+      await reloadShipments();
       return;
     }
 
-    saveShipments();
-    refreshUI();
+    await reloadShipments();
     showToast(t('toast_bulk_issued', { count }));
   }
 
@@ -1221,7 +1274,7 @@
     renderTable();
   }
 
-  function issueAllForClient(clientCode) {
+  async function issueAllForClient(clientCode) {
     const code = normalizeClientCode(clientCode);
     if (!code) return { ok: false, error: t('err_client') };
 
@@ -1233,17 +1286,18 @@
       return { ok: false, error: t('err_no_arrived', { code }) };
     }
 
-    const now = new Date().toISOString();
-    pending.forEach(s => {
-      s.status = 'received';
-      s.updatedAt = now;
-      state.selected.delete(s.track);
-    });
+    let count = 0;
+    for (const s of pending) {
+      const result = await updateParcelStatus(s.track, 'received');
+      if (result.ok) {
+        count += 1;
+        state.selected.delete(s.track);
+      }
+    }
 
-    saveShipments();
-    refreshUI();
-    showToast(t('toast_quick_issued', { code, count: pending.length }));
-    return { ok: true, count: pending.length };
+    await reloadShipments();
+    showToast(t('toast_quick_issued', { code, count }));
+    return { ok: true, count };
   }
 
   /* ============ QR / BARCODE ПАРСИНГ ============ */
@@ -1428,7 +1482,7 @@
         showToast(t('err_qr_invalid'));
         return;
       }
-      const result = issueAllForClient(code);
+      const result = await issueAllForClient(code);
       if (!result.ok) showToast(result.error);
     }
   }
@@ -1455,35 +1509,44 @@
       state.priceManual = true;
     });
 
-    form?.addEventListener('submit', (e) => {
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
       showMessage(errEl, '');
       showMessage(okEl, '');
 
-      const result = addShipment({
-        track: document.getElementById('trackInput')?.value,
-        clientCode: document.getElementById('clientInput')?.value,
-        weightKg: weightInput?.value,
-        priceSom: priceInput?.value
-      });
+      const submitBtn = document.getElementById('addShipmentBtn');
+      if (submitBtn) submitBtn.disabled = true;
 
-      if (!result.ok) {
-        showMessage(errEl, result.error);
-        return;
-      }
+      try {
+        const result = await addShipment({
+          track: document.getElementById('trackInput')?.value,
+          clientCode: document.getElementById('clientInput')?.value,
+          weightKg: weightInput?.value,
+          priceSom: priceInput?.value
+        });
 
-      showMessage(okEl, t('added_ok', { track: result.shipment.track }));
-      form.reset();
-      state.priceManual = false;
-      updatePriceFormula();
+        if (!result.ok) {
+          showMessage(errEl, result.error);
+          return;
+        }
 
-      const row = document.querySelector(
-        '.shipments-table tbody tr[data-track="' + result.shipment.track + '"]'
-      );
-      if (row) {
-        row.classList.add('is-highlight');
-        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        setTimeout(() => row.classList.remove('is-highlight'), 2400);
+        const okText = t('added_ok', { track: result.shipment.track });
+        showMessage(okEl, okText);
+        alert(okText);
+        form.reset();
+        state.priceManual = false;
+        updatePriceFormula();
+
+        const row = document.querySelector(
+          '.shipments-table tbody tr[data-track="' + result.shipment.track + '"]'
+        );
+        if (row) {
+          row.classList.add('is-highlight');
+          row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          setTimeout(() => row.classList.remove('is-highlight'), 2400);
+        }
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
       }
     });
 
@@ -1569,9 +1632,9 @@
 
   /* ============ СТАРТ ============ */
 
-  function init() {
+  async function init() {
     state.settings = loadSettings();
-    state.shipments = loadShipments();
+    state.shipments = [];
 
     if (!checkUrlAccessGate()) {
       applyI18n();
@@ -1595,7 +1658,7 @@
       return;
     }
 
-    continueAfterDeviceAuth();
+    await continueAfterDeviceAuth();
   }
 
   if (document.readyState === 'loading') {
