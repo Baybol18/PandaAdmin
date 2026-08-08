@@ -19,6 +19,7 @@
   const db = window.PandaSupabase.createClient();
   const STATUS_READY = window.PandaSupabase.STATUS_READY;
   const STATUS_ISSUED = window.PandaSupabase.STATUS_ISSUED;
+  const STATUS_DELIVERED = window.PandaSupabase.STATUS_DELIVERED || 'delivered';
 
   /* ============ i18n ============ */
 
@@ -492,13 +493,18 @@
   }
 
   function getShipmentAsOf(shipment) {
-    if (shipment && shipment.status === 'received' && shipment.updatedAt) {
-      return new Date(shipment.updatedAt);
+    if (shipment && shipment.status === 'received') {
+      if (shipment.deliveredAt) return new Date(shipment.deliveredAt);
+      if (shipment.updatedAt) return new Date(shipment.updatedAt);
     }
     return new Date();
   }
 
+  /** Плата за хранение: приоритет — поле storage_fee из БД */
   function getShipmentStorageFee(shipment, asOfDate) {
+    if (shipment && shipment.storageFee != null && !Number.isNaN(Number(shipment.storageFee))) {
+      return Math.max(0, Math.round(Number(shipment.storageFee) || 0));
+    }
     const asOf = asOfDate || getShipmentAsOf(shipment);
     return calcStorageFee(shipment.createdAt || shipment.updatedAt, asOf);
   }
@@ -534,6 +540,12 @@
   function formatStorageLabel(shipment, asOfDate) {
     const fee = getShipmentStorageFee(shipment, asOfDate);
     if (fee <= 0) return t('storage_free');
+
+    // Если fee из БД — показываем сумму без пересчёта дней (дней может не быть)
+    if (shipment && shipment.storageFee != null) {
+      return '+' + fee + ' ' + t('som');
+    }
+
     const days = calendarDaysBetween(shipment.createdAt || shipment.updatedAt, asOfDate || getShipmentAsOf(shipment));
     const overdue = Math.max(0, days - STORAGE_FREE_DAYS);
     return t('storage_fee', { fee: fee, days: overdue });
@@ -1056,11 +1068,14 @@
       id: s.id,
       track_number: s.track,
       client_code: s.clientCode,
-      status: s.status === 'received' ? STATUS_ISSUED : STATUS_READY,
+      user_id: s.userId,
+      status: s.status === 'received' ? STATUS_DELIVERED : STATUS_READY,
       weight: s.weightKg,
       price: s.priceSom,
+      storage_fee: s.storageFee,
       created_at: s.createdAt,
-      updated_at: s.updatedAt
+      updated_at: s.updatedAt,
+      delivered_at: s.deliveredAt
     });
   }
 
@@ -1299,7 +1314,8 @@
     return state.shipments
       .filter(s => {
         const createdInMonth = isInReportMonth(getActivityDate(s));
-        const issuedInMonth = s.status === 'received' && isInReportMonth(s.updatedAt);
+        const issuedInMonth =
+          s.status === 'received' && isInReportMonth(s.deliveredAt || s.updatedAt);
         return createdInMonth || issuedInMonth;
       })
       .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
@@ -1325,12 +1341,14 @@
 
     const accepted = state.shipments.filter(s => isInReportMonth(getActivityDate(s)));
     const issued = state.shipments.filter(
-      s => s.status === 'received' && isInReportMonth(s.updatedAt)
+      s => s.status === 'received' && isInReportMonth(s.deliveredAt || s.updatedAt)
     );
     const monthList = getMonthShipments();
 
     const weight = accepted.reduce((sum, s) => sum + (Number(s.weightKg) || 0), 0);
-    const revenue = issued.reduce((sum, s) => sum + (Number(s.priceSom) || 0), 0);
+    const revenue = issued.reduce((sum, s) => {
+      return sum + getShipmentDelivery(s) + getShipmentStorageFee(s);
+    }, 0);
     const clients = new Set(monthList.map(s => s.clientCode).filter(Boolean));
     const avg = issued.length ? Math.round(revenue / issued.length) : 0;
 
@@ -1442,25 +1460,75 @@
     return { ok: true, shipment };
   }
 
-  async function updateParcelStatus(track, status) {
+  async function updateParcelStatus(track, status, extra) {
     const key = normalizeTrack(track);
     const dbStatus = window.PandaSupabase.mapStatusToDb(status);
     const now = new Date().toISOString();
+    const extras = extra || {};
+
+    const payload = Object.assign(
+      {
+        status: dbStatus,
+        updated_at: now
+      },
+      extras
+    );
+
+    // При выдаче всегда пишем delivered + delivered_at
+    if (dbStatus === STATUS_DELIVERED || status === 'received' || status === 'delivered') {
+      payload.status = STATUS_DELIVERED;
+      payload.delivered_at = extras.delivered_at || now;
+    }
 
     let { error } = await db
       .from('parcels')
-      .update({ status: dbStatus, updated_at: now })
+      .update(payload)
       .eq('track_number', key);
 
     if (error && /updated_at/i.test(error.message || '')) {
+      const withoutUpdated = Object.assign({}, payload);
+      delete withoutUpdated.updated_at;
       const retry = await db
         .from('parcels')
-        .update({ status: dbStatus })
+        .update(withoutUpdated)
         .eq('track_number', key);
       error = retry.error;
     }
 
-    return { ok: !error, error };
+    if (error && /storage_fee/i.test(error.message || '')) {
+      const withoutStorage = Object.assign({}, payload);
+      delete withoutStorage.storage_fee;
+      delete withoutStorage.updated_at;
+      const retry = await db
+        .from('parcels')
+        .update(withoutStorage)
+        .eq('track_number', key);
+      error = retry.error;
+    }
+
+    if (error) {
+      console.error('parcel status update error:', error, { track: key, payload });
+    }
+
+    return { ok: !error, error, deliveredAt: payload.delivered_at || null };
+  }
+
+  async function deliverParcel(shipment) {
+    const item = typeof shipment === 'string'
+      ? state.shipments.find(s => s.track === normalizeTrack(shipment))
+      : shipment;
+
+    if (!item || item.status === 'received') {
+      return { ok: false, error: { message: 'already delivered' } };
+    }
+
+    const storageFee = getShipmentStorageFee(item);
+    const now = new Date().toISOString();
+
+    return updateParcelStatus(item.track, 'delivered', {
+      delivered_at: now,
+      storage_fee: storageFee
+    });
   }
 
   async function issueShipment(track) {
@@ -1468,7 +1536,7 @@
     const item = state.shipments.find(s => s.track === key);
     if (!item || item.status === 'received') return false;
 
-    const result = await updateParcelStatus(key, 'received');
+    const result = await deliverParcel(item);
     if (!result.ok) {
       showToast((result.error && result.error.message) || 'Supabase error');
       return false;
@@ -1512,7 +1580,7 @@
 
     let count = 0;
     for (const s of pending) {
-      const result = await updateParcelStatus(s.track, 'received');
+      const result = await deliverParcel(s);
       if (result.ok) {
         count += 1;
         state.selected.delete(s.track);
@@ -1577,17 +1645,10 @@
       return state.clientsCache;
     }
 
-    let { data, error } = await db.from('clients').select('*');
+    const { data, error } = await db.from('clients').select('*');
 
     if (error) {
-      console.warn('clients load:', error);
-      const retry = await db.from('clients').select('id, client_code, email, created_at');
-      data = retry.data;
-      error = retry.error;
-    }
-
-    if (error) {
-      console.warn('clients load:', error);
+      console.error('clients load error:', error);
       state.clientsCache = [];
       state.clientsCacheAt = Date.now();
       return [];
@@ -1618,7 +1679,8 @@
     const empty = document.getElementById('clientsEmpty');
     if (!body) return;
 
-    const clients = await loadClientsCache(false);
+    // Всегда свежий запрос из таблицы clients
+    const clients = await loadClientsCache(true);
     const sorted = clients.slice().sort((a, b) => {
       const ac = Number(a.clientCode) || 0;
       const bc = Number(b.clientCode) || 0;
@@ -1678,15 +1740,16 @@
     });
   }
 
+  function isDeliveredToday(shipment) {
+    const raw = shipment && (shipment.deliveredAt || shipment.delivered_at);
+    if (!raw) return false;
+    const at = new Date(raw);
+    if (Number.isNaN(at.getTime())) return false;
+    return localDayKey(at) === localDayKey(new Date());
+  }
+
   function getTodayIssuedParcels() {
-    const start = startOfLocalDay(new Date());
-    const now = new Date();
-    return state.shipments.filter(s => {
-      if (s.status !== 'received') return false;
-      const at = new Date(s.updatedAt);
-      if (Number.isNaN(at.getTime())) return false;
-      return at >= start && at <= now;
-    });
+    return state.shipments.filter(isDeliveredToday);
   }
 
   function renderCashDay() {
@@ -1696,8 +1759,7 @@
 
     issued.forEach(s => {
       delivery += getShipmentDelivery(s);
-      // Хранение на момент выдачи (updatedAt)
-      storage += calcStorageFee(s.createdAt || s.updatedAt, new Date(s.updatedAt));
+      storage += getShipmentStorageFee(s);
     });
 
     const set = (id, text) => {
@@ -1983,7 +2045,7 @@
     let count = 0;
     try {
       for (const s of selected) {
-        const result = await updateParcelStatus(s.track, 'received');
+        const result = await deliverParcel(s);
         if (result.ok) {
           count += 1;
           state.selected.delete(s.track);
