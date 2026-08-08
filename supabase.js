@@ -27,6 +27,7 @@
       id: row.id,
       track: String(row.track_number || row.track || '').toUpperCase(),
       clientCode: String(row.client_code || row.clientCode || '').replace(/\D/g, ''),
+      userId: String(row.user_id || row.userId || '').trim(),
       status: status,
       statusLabel: statusRaw || (status === 'received' ? STATUS_ISSUED : STATUS_READY),
       weightKg: Number(row.weight) || 0,

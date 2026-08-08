@@ -8,6 +8,10 @@
   const ACCESS_FLAG_KEY = 'access_granted';
   const ACCESS_SECRET = 'pd_sec_8f92k4x1';
   const PRICE_PER_KG = 250;
+  const STORAGE_FREE_DAYS = 5;
+  const STORAGE_FEE_PER_DAY = 10;
+  /** Код страны для WhatsApp (Кыргызстан) */
+  const PHONE_COUNTRY_CODE = '996';
 
   /* SHA-256 of warehouse password — plaintext is never stored */
   const PASSWORD_SHA256 = 'e1b3da7873109b1c49fed74139832446750e5b88b4dd096a57745d6858d93d31';
@@ -60,17 +64,24 @@
       all_shipments: 'Все посылки',
       all_shipments_subtitle: 'Поиск, фильтры и выдача',
       quick_issue: 'Быстрая выдача по QR',
-      search_placeholder: 'Трек-код или код клиента',
+      search_placeholder: 'QR, 6-значный код или трек',
       find: 'Найти',
       filter_all: 'Все',
       filter_warehouse: 'На складе',
       filter_issued: 'Выдано',
       empty_shipments: 'Посылок пока нет',
 
+      voice_found: 'Товаров {count} на сумму {sum} сом.',
+      voice_not_found: 'Посылок не найдено.',
+      toast_pickup_found: 'Клиент №{code}: {count} шт. на {sum} сом',
+      toast_pickup_none: 'Посылок не найдено',
+      err_pickup_code: 'Код выдачи не распознан',
+
       col_track: 'Трек-код',
       col_client: 'Код клиента',
       col_weight: 'Вес',
       col_price: 'Стоимость',
+      col_storage: 'Хранение',
       col_date: 'Дата',
       col_status: 'Статус',
       col_action: 'Действие',
@@ -78,6 +89,40 @@
       status_received: 'Выдано',
       issue_btn: 'Выдать',
       issued_btn: 'Выдано',
+      storage_free: 'без пени',
+      storage_fee: '+{fee} сом ({days} дн.)',
+      storage_days_overdue: '{days} дн. просрочки',
+
+      nav_ops: 'Приёмка и выдача',
+      nav_clients: 'Клиенты',
+      nav_cash: 'Касса за день',
+      nav_report: 'Отчёт за месяц',
+
+      clients_title: 'Клиенты',
+      clients_subtitle: 'Список клиентов и быстрый переход в WhatsApp',
+      clients_empty: 'Клиентов пока нет',
+      col_client_code: 'Персональный код',
+      col_client_name: 'ФИО / Email',
+      col_client_phone: 'Телефон',
+      col_client_registered: 'Регистрация',
+      wa_btn: 'WhatsApp',
+      no_phone: 'Нет номера',
+
+      cash_title: 'Касса за день',
+      cash_subtitle: 'Аналитика выдачи с 00:00 до текущего момента',
+      cash_issued_count: 'Выдано посылок',
+      cash_total: 'Итого касса',
+      cash_delivery: 'За доставку',
+      cash_storage: 'За хранение',
+      cash_date: 'Сегодня, {date}',
+
+      issue_title: 'Выдача посылок',
+      issue_selected: 'Выбрано',
+      issue_pay: 'К оплате',
+      issue_select_all: 'Выбрать все',
+      issue_confirm: 'Выдать выбранные',
+      issue_client: 'Клиент {code}',
+      bulk_sum: 'К оплате: {sum}',
 
       bulk_selected: 'Выбрано: {count}',
       bulk_issue: 'Выдать выбранные',
@@ -113,7 +158,7 @@
       scanner_hint_default: 'Наведите камеру на код',
       scanner_hint_track: 'Наведите камеру на штрих-код товара',
       scanner_hint_client: 'Наведите камеру на QR-код клиента',
-      scanner_hint_quick: 'Наведите камеру на QR клиента — выдадим все посылки на складе',
+      scanner_hint_quick: 'Наведите камеру на QR клиента — откроется окно выдачи',
       scanner_start_fail: 'Не удалось открыть камеру. Проверьте разрешения.',
       scanner_lib_missing: 'Библиотека сканера не загружена',
 
@@ -185,17 +230,24 @@
       all_shipments: 'Бардык посылкалар',
       all_shipments_subtitle: 'Издөө, чыпкалар жана берүү',
       quick_issue: 'QR менен тез берүү',
-      search_placeholder: 'Трек-код же кардар коду',
+      search_placeholder: 'QR, 6 орундуу код же трек',
       find: 'Издөө',
       filter_all: 'Баары',
       filter_warehouse: 'Складда',
       filter_issued: 'Берилди',
       empty_shipments: 'Азырынча посылка жок',
 
+      voice_found: 'Товарлар {count}, суммасы {sum} сом.',
+      voice_not_found: 'Посылка табылган жок.',
+      toast_pickup_found: '№{code} кардар: {count} дана, {sum} сом',
+      toast_pickup_none: 'Посылка табылган жок',
+      err_pickup_code: 'Берүү коду таанылган жок',
+
       col_track: 'Трек-код',
       col_client: 'Кардар коду',
       col_weight: 'Салмак',
       col_price: 'Баасы',
+      col_storage: 'Сактоо',
       col_date: 'Күнү',
       col_status: 'Статус',
       col_action: 'Аракет',
@@ -203,6 +255,40 @@
       status_received: 'Берилди',
       issue_btn: 'Берүү',
       issued_btn: 'Берилди',
+      storage_free: 'айыпсыз',
+      storage_fee: '+{fee} сом ({days} күн)',
+      storage_days_overdue: '{days} күн кечигүү',
+
+      nav_ops: 'Кабыл алуу жана берүү',
+      nav_clients: 'Кардарлар',
+      nav_cash: 'Күндүк касса',
+      nav_report: 'Айлык отчет',
+
+      clients_title: 'Кардарлар',
+      clients_subtitle: 'Тизме жана WhatsApp',
+      clients_empty: 'Азырынча кардар жок',
+      col_client_code: 'Жеке код',
+      col_client_name: 'Аты-жөнү / Email',
+      col_client_phone: 'Телефон',
+      col_client_registered: 'Каттоо',
+      wa_btn: 'WhatsApp',
+      no_phone: 'Номер жок',
+
+      cash_title: 'Күндүк касса',
+      cash_subtitle: 'Берүү аналитикасы 00:00дан азыркы учукка чейин',
+      cash_issued_count: 'Берилген посылкалар',
+      cash_total: 'Жалпы касса',
+      cash_delivery: 'Жеткирүү үчүн',
+      cash_storage: 'Сактоо үчүн',
+      cash_date: 'Бүгүн, {date}',
+
+      issue_title: 'Посылкаларды берүү',
+      issue_selected: 'Тандалды',
+      issue_pay: 'Төлөөгө',
+      issue_select_all: 'Баарын тандоо',
+      issue_confirm: 'Тандалгандарды берүү',
+      issue_client: 'Кардар {code}',
+      bulk_sum: 'Төлөөгө: {sum}',
 
       bulk_selected: 'Тандалды: {count}',
       bulk_issue: 'Тандалгандарды берүү',
@@ -238,7 +324,7 @@
       scanner_hint_default: 'Камераны кодго багыттаңыз',
       scanner_hint_track: 'Камераны товардын штрих-кодуна багыттаңыз',
       scanner_hint_client: 'Камераны кардардын QR кодуна багыттаңыз',
-      scanner_hint_quick: 'Кардардын QR кодуна багыттаңыз — складдагы бардык посылкалар берилет',
+      scanner_hint_quick: 'Кардардын QR кодуна багыттаңыз — берүү терезеси ачылат',
       scanner_start_fail: 'Камера ачылган жок. Уруксаттарды текшериңиз.',
       scanner_lib_missing: 'Сканер китепканасы жүктөлгөн жок',
 
@@ -290,6 +376,17 @@
       mode: null,
       instance: null,
       busy: false
+    },
+    scannerFocus: 'track',
+    clientsCache: [],
+    clientsCacheAt: 0,
+    activeSection: 'ops',
+    issueModal: {
+      open: false,
+      clientCode: '',
+      tracks: [],
+      selected: new Set(),
+      speakOnChange: true
     }
   };
 
@@ -338,7 +435,10 @@
     renderStats();
     renderTable();
     renderReport();
+    renderClients();
+    renderCashDay();
     updateBulkBar();
+    if (state.issueModal.open) renderIssueModalSummary();
   }
 
   function setLang(lang) {
@@ -369,6 +469,111 @@
     const d = new Date(isoString);
     if (Number.isNaN(d.getTime())) return '—';
     return pad2(d.getDate()) + '.' + pad2(d.getMonth() + 1) + '.' + d.getFullYear();
+  }
+
+  function startOfLocalDay(date) {
+    const d = date instanceof Date ? new Date(date) : new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  function calendarDaysBetween(fromIso, toDate) {
+    const start = startOfLocalDay(fromIso);
+    const end = startOfLocalDay(toDate || new Date());
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+    return Math.max(0, Math.round((end - start) / 86400000));
+  }
+
+  /** Пеня за хранение: с 6-го дня на складе +10 сом/день */
+  function calcStorageFee(fromIso, toDate) {
+    const days = calendarDaysBetween(fromIso, toDate);
+    const overdue = Math.max(0, days - STORAGE_FREE_DAYS);
+    return overdue * STORAGE_FEE_PER_DAY;
+  }
+
+  function getShipmentAsOf(shipment) {
+    if (shipment && shipment.status === 'received' && shipment.updatedAt) {
+      return new Date(shipment.updatedAt);
+    }
+    return new Date();
+  }
+
+  function getShipmentStorageFee(shipment, asOfDate) {
+    const asOf = asOfDate || getShipmentAsOf(shipment);
+    return calcStorageFee(shipment.createdAt || shipment.updatedAt, asOf);
+  }
+
+  function getShipmentDelivery(shipment) {
+    return Math.round(Number(shipment.priceSom) || 0);
+  }
+
+  function getShipmentTotalDue(shipment, asOfDate) {
+    return getShipmentDelivery(shipment) + getShipmentStorageFee(shipment, asOfDate);
+  }
+
+  function summarizeParcels(parcels, asOfDate) {
+    const list = Array.isArray(parcels) ? parcels : [];
+    let delivery = 0;
+    let storage = 0;
+    list.forEach(s => {
+      delivery += getShipmentDelivery(s);
+      storage += getShipmentStorageFee(s, asOfDate);
+    });
+    return {
+      count: list.length,
+      delivery: delivery,
+      storage: storage,
+      total: delivery + storage,
+      overdueDaysTotal: list.reduce((acc, s) => {
+        const days = calendarDaysBetween(s.createdAt || s.updatedAt, asOfDate || getShipmentAsOf(s));
+        return acc + Math.max(0, days - STORAGE_FREE_DAYS);
+      }, 0)
+    };
+  }
+
+  function formatStorageLabel(shipment, asOfDate) {
+    const fee = getShipmentStorageFee(shipment, asOfDate);
+    if (fee <= 0) return t('storage_free');
+    const days = calendarDaysBetween(shipment.createdAt || shipment.updatedAt, asOfDate || getShipmentAsOf(shipment));
+    const overdue = Math.max(0, days - STORAGE_FREE_DAYS);
+    return t('storage_fee', { fee: fee, days: overdue });
+  }
+
+  function normalizePhoneDigits(value) {
+    return String(value || '').replace(/\D/g, '');
+  }
+
+  function toWhatsAppNumber(phone) {
+    let digits = normalizePhoneDigits(phone);
+    if (!digits) return '';
+
+    if (digits.startsWith('00')) digits = digits.slice(2);
+
+    // Локальный формат KG: 0XXXXXXXXX → 996XXXXXXXXX
+    if (digits.length === 10 && digits.startsWith('0')) {
+      digits = PHONE_COUNTRY_CODE + digits.slice(1);
+    } else if (digits.length === 9) {
+      digits = PHONE_COUNTRY_CODE + digits;
+    } else if (digits.length === 12 && digits.startsWith('996')) {
+      /* already ok */
+    }
+
+    if (digits.length < 10) return '';
+    return digits;
+  }
+
+  function whatsappUrl(phone) {
+    const n = toWhatsAppNumber(phone);
+    return n ? 'https://wa.me/' + n : '';
+  }
+
+  function formatPhoneDisplay(phone) {
+    const n = toWhatsAppNumber(phone);
+    if (!n) return String(phone || '').trim() || '—';
+    if (n.startsWith(PHONE_COUNTRY_CODE) && n.length === 12) {
+      return '+' + PHONE_COUNTRY_CODE + ' ' + n.slice(3, 6) + ' ' + n.slice(6, 9) + ' ' + n.slice(9);
+    }
+    return '+' + n;
   }
 
   function normalizeTrack(value) {
@@ -617,6 +822,8 @@
     hidePinGate();
     showApp();
     await reloadShipments();
+    loadClientsCache(true).catch(() => {});
+    setScannerFocusTarget('track');
   }
 
   function showDeviceAuthGate() {
@@ -809,6 +1016,8 @@
         hidePinGate();
         showApp();
         await reloadShipments();
+        loadClientsCache(true).catch(() => {});
+        setScannerFocusTarget('track');
       } catch (error) {
         showMessage(err, t('err_crypto'));
       }
@@ -865,7 +1074,7 @@
   function renderStats() {
     const arrived = state.shipments.filter(s => s.status === 'arrived');
     const received = state.shipments.filter(s => s.status === 'received');
-    const due = arrived.reduce((sum, s) => sum + s.priceSom, 0);
+    const due = arrived.reduce((sum, s) => sum + getShipmentTotalDue(s), 0);
 
     const set = (id, text) => {
       const el = document.getElementById(id);
@@ -894,7 +1103,8 @@
         const trackMatch = s.track.includes(q);
         const codeMatch = qCode && s.clientCode.includes(qCode);
         const labelMatch = formatClientLabel(s.clientCode).toUpperCase().includes(q);
-        return trackMatch || codeMatch || labelMatch;
+        const userMatch = s.userId && s.userId.toUpperCase().includes(q);
+        return trackMatch || codeMatch || labelMatch || userMatch;
       });
     }
 
@@ -914,17 +1124,25 @@
   function updateBulkBar() {
     const bar = document.getElementById('bulkBar');
     const countEl = document.getElementById('bulkCount');
+    const sumEl = document.getElementById('bulkSum');
     const count = state.selected.size;
 
     if (!bar) return;
 
-    if (count === 0) {
+    // Скрываем нижнюю панель, пока открыто окно выдачи
+    if (count === 0 || state.issueModal.open) {
       bar.hidden = true;
       return;
     }
 
+    const selectedParcels = state.shipments.filter(
+      s => state.selected.has(s.track) && s.status === 'arrived'
+    );
+    const totals = summarizeParcels(selectedParcels);
+
     bar.hidden = false;
     if (countEl) countEl.textContent = t('bulk_selected', { count });
+    if (sumEl) sumEl.textContent = t('bulk_sum', { sum: formatSom(totals.total) });
   }
 
   function syncSelectAllCheckbox(list) {
@@ -975,13 +1193,24 @@
       const isSelected = state.selected.has(shipment.track);
       if (isSelected) tr.classList.add('is-selected');
 
+      const storageFee = getShipmentStorageFee(shipment);
+      const totalDue = getShipmentTotalDue(shipment);
+
       tr.innerHTML =
         '<td class="td-check"></td>' +
         '<td class="cell-mono">' + escapeHtml(shipment.track) + '</td>' +
         '<td class="cell-mono">' + escapeHtml(formatClientLabel(shipment.clientCode)) + '</td>' +
         '<td class="cell-mono">' + shipment.weightKg + ' ' + t('kg') + '</td>' +
-        '<td class="cell-mono">' + formatSom(shipment.priceSom) + '</td>' +
-        '<td>' + formatDateShort(shipment.updatedAt) + '</td>' +
+        '<td class="cell-mono"><div class="price-stack">' +
+          '<span>' + formatSom(shipment.priceSom) + '</span>' +
+          (canIssue && storageFee > 0
+            ? '<span class="price-stack__total">' + formatSom(totalDue) + '</span>'
+            : '') +
+        '</div></td>' +
+        '<td><span class="storage-fee' + (storageFee > 0 ? '' : ' storage-fee--zero') + '">' +
+          escapeHtml(formatStorageLabel(shipment)) +
+        '</span></td>' +
+        '<td>' + formatDateShort(shipment.createdAt || shipment.updatedAt) + '</td>' +
         '<td><span class="badge badge--' + shipment.status + '">' +
           (shipment.status === 'received' ? t('status_received') : t('status_arrived')) +
         '</span></td>' +
@@ -1012,7 +1241,9 @@
       btn.textContent = canIssue ? t('issue_btn') : t('issued_btn');
       btn.disabled = !canIssue;
       if (canIssue) {
-        btn.addEventListener('click', () => issueShipment(shipment.track));
+        btn.addEventListener('click', () => {
+          openIssueModal([shipment], shipment.clientCode);
+        });
       }
       actionTd.appendChild(btn);
 
@@ -1027,6 +1258,10 @@
     renderStats();
     renderTable();
     renderReport();
+    renderClients();
+    renderCashDay();
+    updateBulkBar();
+    if (state.issueModal.open) syncIssueModalFromState();
   }
 
   /* ============ ОТЧЁТ ЗА МЕСЯЦ ============ */
@@ -1246,27 +1481,16 @@
   }
 
   async function issueSelected() {
-    const tracks = Array.from(state.selected);
-    let count = 0;
+    const parcels = state.shipments.filter(
+      s => state.selected.has(s.track) && s.status === 'arrived'
+    );
 
-    for (const track of tracks) {
-      const item = state.shipments.find(s => s.track === track);
-      if (item && item.status === 'arrived') {
-        const result = await updateParcelStatus(track, 'received');
-        if (result.ok) count += 1;
-      }
-    }
-
-    state.selected.clear();
-
-    if (count === 0) {
+    if (parcels.length === 0) {
       showToast(t('toast_bulk_none'));
-      await reloadShipments();
       return;
     }
 
-    await reloadShipments();
-    showToast(t('toast_bulk_issued', { count }));
+    openIssueModal(parcels, parcels[0].clientCode);
   }
 
   function clearSelection() {
@@ -1300,7 +1524,504 @@
     return { ok: true, count };
   }
 
-  /* ============ QR / BARCODE ПАРСИНГ ============ */
+  /* ============ СУТОЧНЫЙ КОД ВЫДАЧИ (синхрон с клиентом) ============ */
+
+  /**
+   * Алгоритм (не менять без синхронизации с клиентом):
+   *   seed = "PandaCargo.pickup.v1|{userId}|{YYYY-MM-DD}"
+   *   FNV-1a 32-bit → n % 1_000_000 → 6 цифр
+   */
+  const PICKUP_CODE_SALT = 'PandaCargo.pickup.v1';
+
+  function localDayKey(date) {
+    const d = date || new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function fnv1a32(str) {
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      hash ^= str.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193);
+    }
+    return hash >>> 0;
+  }
+
+  function generateDailyPickupCode(userId, dateYmd) {
+    const id = String(userId || '').trim();
+    if (!id) return '';
+    const day = dateYmd || localDayKey();
+    const seed = PICKUP_CODE_SALT + '|' + id + '|' + day;
+    const n = fnv1a32(seed) % 1000000;
+    return String(n).padStart(6, '0');
+  }
+
+  function normalizePickupDigits(value) {
+    return String(value || '').replace(/\D/g, '');
+  }
+
+  function formatPickupCode(digits) {
+    const d = normalizePickupDigits(digits);
+    if (d.length !== 6) return d;
+    return d.slice(0, 3) + '-' + d.slice(3);
+  }
+
+  function isPickupCodeInput(value) {
+    const d = normalizePickupDigits(value);
+    return d.length === 6 && /^\d{6}$/.test(d);
+  }
+
+  async function loadClientsCache(force) {
+    const fresh = Date.now() - state.clientsCacheAt < 60 * 1000;
+    if (!force && state.clientsCache.length && fresh) {
+      return state.clientsCache;
+    }
+
+    let { data, error } = await db.from('clients').select('*');
+
+    if (error) {
+      console.warn('clients load:', error);
+      const retry = await db.from('clients').select('id, client_code, email, created_at');
+      data = retry.data;
+      error = retry.error;
+    }
+
+    if (error) {
+      console.warn('clients load:', error);
+      state.clientsCache = [];
+      state.clientsCacheAt = Date.now();
+      return [];
+    }
+
+    state.clientsCache = (data || []).map(row => ({
+      id: row.id,
+      userId: row.user_id || row.id,
+      clientCode: normalizeClientCode(row.client_code),
+      email: row.email || '',
+      fullName: String(row.full_name || row.fullName || row.name || row.fio || '').trim(),
+      phone: String(row.phone || row.phone_number || row.tel || '').trim(),
+      createdAt: row.created_at || row.createdAt || ''
+    })).filter(c => c.clientCode || c.userId);
+
+    state.clientsCacheAt = Date.now();
+    return state.clientsCache;
+  }
+
+  function mapClientDisplayName(client) {
+    if (client.fullName) return client.fullName;
+    if (client.email) return client.email;
+    return '—';
+  }
+
+  async function renderClients() {
+    const body = document.getElementById('clientsBody');
+    const empty = document.getElementById('clientsEmpty');
+    if (!body) return;
+
+    const clients = await loadClientsCache(false);
+    const sorted = clients.slice().sort((a, b) => {
+      const ac = Number(a.clientCode) || 0;
+      const bc = Number(b.clientCode) || 0;
+      return ac - bc;
+    });
+
+    body.innerHTML = '';
+
+    if (sorted.length === 0) {
+      if (empty) {
+        empty.hidden = false;
+        empty.textContent = t('clients_empty');
+      }
+      return;
+    }
+
+    if (empty) empty.hidden = true;
+
+    sorted.forEach((client, index) => {
+      const tr = document.createElement('tr');
+      tr.style.animationDelay = (index * 0.03) + 's';
+
+      const phoneTd = document.createElement('td');
+      phoneTd.className = 'phone-cell';
+
+      const phoneText = document.createElement('span');
+      phoneText.className = 'cell-mono';
+      phoneText.textContent = client.phone ? formatPhoneDisplay(client.phone) : t('no_phone');
+      phoneTd.appendChild(phoneText);
+
+      const wa = whatsappUrl(client.phone);
+      if (wa) {
+        const link = document.createElement('a');
+        link.className = 'btn--wa';
+        link.href = wa;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = t('wa_btn');
+        phoneTd.appendChild(link);
+      }
+
+      const codeTd = document.createElement('td');
+      codeTd.className = 'cell-mono';
+      codeTd.textContent = formatClientLabel(client.clientCode);
+
+      const nameTd = document.createElement('td');
+      nameTd.textContent = mapClientDisplayName(client);
+
+      const dateTd = document.createElement('td');
+      dateTd.textContent = client.createdAt ? formatDateShort(client.createdAt) : '—';
+
+      tr.appendChild(codeTd);
+      tr.appendChild(nameTd);
+      tr.appendChild(phoneTd);
+      tr.appendChild(dateTd);
+      body.appendChild(tr);
+    });
+  }
+
+  function getTodayIssuedParcels() {
+    const start = startOfLocalDay(new Date());
+    const now = new Date();
+    return state.shipments.filter(s => {
+      if (s.status !== 'received') return false;
+      const at = new Date(s.updatedAt);
+      if (Number.isNaN(at.getTime())) return false;
+      return at >= start && at <= now;
+    });
+  }
+
+  function renderCashDay() {
+    const issued = getTodayIssuedParcels();
+    let delivery = 0;
+    let storage = 0;
+
+    issued.forEach(s => {
+      delivery += getShipmentDelivery(s);
+      // Хранение на момент выдачи (updatedAt)
+      storage += calcStorageFee(s.createdAt || s.updatedAt, new Date(s.updatedAt));
+    });
+
+    const set = (id, text) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    };
+
+    set('cashIssuedCount', String(issued.length));
+    set('cashDelivery', formatSom(delivery));
+    set('cashStorage', formatSom(storage));
+    set('cashTotal', formatSom(delivery + storage));
+
+    const dateLabel = document.getElementById('cashDateLabel');
+    if (dateLabel) {
+      dateLabel.textContent = t('cash_date', { date: formatDateShort(new Date().toISOString()) });
+    }
+  }
+
+  function setActiveSection(section) {
+    const id = section || 'ops';
+    state.activeSection = id;
+
+    document.querySelectorAll('.section-nav__btn').forEach(btn => {
+      btn.classList.toggle('is-active', btn.dataset.section === id);
+    });
+
+    const map = {
+      ops: 'sectionOps',
+      clients: 'sectionClients',
+      cash: 'sectionCash',
+      report: 'sectionReport'
+    };
+
+    Object.keys(map).forEach(key => {
+      const el = document.getElementById(map[key]);
+      if (el) el.hidden = key !== id;
+    });
+
+    if (id === 'clients') renderClients();
+    if (id === 'cash') renderCashDay();
+    if (id === 'report') renderReport();
+    if (id === 'ops') setTimeout(focusScannerField, 50);
+  }
+
+  function initSectionNav() {
+    document.getElementById('sectionNav')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.section-nav__btn');
+      if (!btn) return;
+      setActiveSection(btn.dataset.section || 'ops');
+    });
+  }
+
+  async function findClientByPickupCode(rawCode) {
+    const digits = normalizePickupDigits(rawCode);
+    if (digits.length !== 6) return null;
+
+    const today = localDayKey();
+    const clients = await loadClientsCache(false);
+
+    for (const client of clients) {
+      const ids = [client.userId, client.id].filter(Boolean);
+      for (const id of ids) {
+        if (generateDailyPickupCode(id, today) === digits) return client;
+      }
+    }
+
+    // Retry with forced refresh in case cache is stale
+    const fresh = await loadClientsCache(true);
+    for (const client of fresh) {
+      const ids = [client.userId, client.id].filter(Boolean);
+      for (const id of ids) {
+        if (generateDailyPickupCode(id, today) === digits) return client;
+      }
+    }
+
+    return null;
+  }
+
+  function verifyDailyPickupCode(userId, inputCode, dateYmd) {
+    const expected = generateDailyPickupCode(userId, dateYmd);
+    const got = normalizePickupDigits(inputCode);
+    return Boolean(expected) && expected === got;
+  }
+
+  window.PandaCargo = window.PandaCargo || {};
+  window.PandaCargo.generateDailyPickupCode = generateDailyPickupCode;
+  window.PandaCargo.verifyDailyPickupCode = verifyDailyPickupCode;
+
+  /* ============ ОЗВУЧКА ============ */
+
+  function speakRu(text) {
+    const message = String(text || '').trim();
+    if (!message || !window.speechSynthesis) return;
+
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(message);
+      utter.lang = 'ru-RU';
+      utter.rate = 1;
+      utter.pitch = 1;
+
+      const voices = window.speechSynthesis.getVoices() || [];
+      const ruVoice = voices.find(v => /^ru/i.test(v.lang)) ||
+        voices.find(v => /russian|рус/i.test(v.name || ''));
+      if (ruVoice) utter.voice = ruVoice;
+
+      window.speechSynthesis.speak(utter);
+    } catch (e) {
+      console.warn('speechSynthesis:', e);
+    }
+  }
+
+  function speakIssueResult(parcels) {
+    const list = Array.isArray(parcels) ? parcels : [];
+    // Озвучка всегда на русском (ru-RU), независимо от языка UI
+    if (list.length === 0) {
+      speakRu('Посылок не найдено.');
+      return;
+    }
+    const totals = summarizeParcels(list);
+    speakRu('Товаров ' + totals.count + ' на сумму ' + Math.round(totals.total) + ' сом.');
+  }
+
+  /* ============ ОКНО ВЫДАЧИ (частичная) ============ */
+
+  function getIssueSelectedParcels() {
+    return state.shipments.filter(
+      s => state.issueModal.selected.has(s.track) && s.status === 'arrived'
+    );
+  }
+
+  function renderIssueModalSummary(options) {
+    const opts = options || {};
+    const selected = getIssueSelectedParcels();
+    const totals = summarizeParcels(selected);
+
+    const set = (id, text) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    };
+
+    set('issueCount', String(totals.count));
+    set('issueDelivery', formatSom(totals.delivery));
+    set('issueStorage', formatSom(totals.storage));
+    set('issueTotal', formatSom(totals.total));
+
+    const confirmBtn = document.getElementById('issueConfirmBtn');
+    if (confirmBtn) confirmBtn.disabled = totals.count === 0;
+
+    if (opts.speak) speakIssueResult(selected);
+  }
+
+  function renderIssueModalList() {
+    const listEl = document.getElementById('issueList');
+    const emptyEl = document.getElementById('issueEmpty');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+    const parcels = state.shipments.filter(
+      s => state.issueModal.tracks.includes(s.track) && s.status === 'arrived'
+    );
+
+    if (parcels.length === 0) {
+      if (emptyEl) emptyEl.hidden = false;
+      return;
+    }
+    if (emptyEl) emptyEl.hidden = true;
+
+    parcels.forEach(shipment => {
+      const checked = state.issueModal.selected.has(shipment.track);
+      const fee = getShipmentStorageFee(shipment);
+      const card = document.createElement('label');
+      card.className = 'issue-card' + (checked ? ' is-checked' : '');
+
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'row-check';
+      check.checked = checked;
+
+      const body = document.createElement('div');
+      body.innerHTML =
+        '<p class="issue-card__track">' + escapeHtml(shipment.track) + '</p>' +
+        '<p class="issue-card__meta">' +
+          escapeHtml(shipment.weightKg + ' ' + t('kg')) + ' · ' +
+          escapeHtml(formatDateShort(shipment.createdAt || shipment.updatedAt)) +
+        '</p>';
+
+      const price = document.createElement('div');
+      price.className = 'issue-card__price';
+      price.innerHTML =
+        formatSom(getShipmentTotalDue(shipment)) +
+        (fee > 0
+          ? '<span class="issue-card__storage">' + escapeHtml(formatStorageLabel(shipment)) + '</span>'
+          : '');
+
+      check.addEventListener('change', () => {
+        if (check.checked) state.issueModal.selected.add(shipment.track);
+        else state.issueModal.selected.delete(shipment.track);
+        card.classList.toggle('is-checked', check.checked);
+        renderIssueModalSummary({ speak: state.issueModal.speakOnChange });
+      });
+
+      card.appendChild(check);
+      card.appendChild(body);
+      card.appendChild(price);
+      listEl.appendChild(card);
+    });
+  }
+
+  function syncIssueModalFromState() {
+    if (!state.issueModal.open) return;
+
+    state.issueModal.tracks = state.issueModal.tracks.filter(track => {
+      const s = state.shipments.find(x => x.track === track);
+      return s && s.status === 'arrived';
+    });
+    const alive = new Set(state.issueModal.tracks);
+    state.issueModal.selected.forEach(track => {
+      if (!alive.has(track)) state.issueModal.selected.delete(track);
+    });
+
+    const label = document.getElementById('issueClientLabel');
+    if (label) {
+      label.textContent = t('issue_client', {
+        code: formatClientLabel(state.issueModal.clientCode)
+      });
+    }
+
+    renderIssueModalList();
+    renderIssueModalSummary({ speak: false });
+
+    if (state.issueModal.tracks.length === 0) {
+      closeIssueModal();
+    }
+  }
+
+  function openIssueModal(parcels, clientCode) {
+    const list = (parcels || []).filter(s => s && s.status === 'arrived');
+    state.issueModal.open = true;
+    state.issueModal.clientCode = normalizeClientCode(clientCode) || (list[0] && list[0].clientCode) || '';
+    state.issueModal.tracks = list.map(s => s.track);
+    state.issueModal.selected = new Set(state.issueModal.tracks);
+    state.issueModal.speakOnChange = true;
+
+    state.selected.clear();
+    state.issueModal.tracks.forEach(track => state.selected.add(track));
+
+    const overlay = document.getElementById('issueOverlay');
+    if (overlay) overlay.hidden = false;
+
+    const label = document.getElementById('issueClientLabel');
+    if (label) {
+      label.textContent = t('issue_client', {
+        code: formatClientLabel(state.issueModal.clientCode)
+      });
+    }
+
+    renderIssueModalList();
+    renderIssueModalSummary({ speak: true });
+    updateBulkBar();
+  }
+
+  function closeIssueModal() {
+    state.issueModal.open = false;
+    state.issueModal.tracks = [];
+    state.issueModal.selected.clear();
+    const overlay = document.getElementById('issueOverlay');
+    if (overlay) overlay.hidden = true;
+    updateBulkBar();
+    focusScannerField();
+  }
+
+  async function confirmIssueModal() {
+    const selected = getIssueSelectedParcels();
+    if (selected.length === 0) {
+      showToast(t('toast_bulk_none'));
+      return;
+    }
+
+    const confirmBtn = document.getElementById('issueConfirmBtn');
+    if (confirmBtn) confirmBtn.disabled = true;
+
+    let count = 0;
+    try {
+      for (const s of selected) {
+        const result = await updateParcelStatus(s.track, 'received');
+        if (result.ok) {
+          count += 1;
+          state.selected.delete(s.track);
+          state.issueModal.selected.delete(s.track);
+        }
+      }
+
+      await reloadShipments();
+
+      if (count === 0) {
+        showToast(t('toast_bulk_none'));
+        return;
+      }
+
+      showToast(t('toast_bulk_issued', { count }));
+      closeIssueModal();
+      renderCashDay();
+    } finally {
+      if (confirmBtn) confirmBtn.disabled = false;
+    }
+  }
+
+  function initIssueModal() {
+    document.getElementById('issueClose')?.addEventListener('click', closeIssueModal);
+    document.getElementById('issueOverlay')?.addEventListener('click', (e) => {
+      if (e.target.id === 'issueOverlay') closeIssueModal();
+    });
+    document.getElementById('issueConfirmBtn')?.addEventListener('click', () => {
+      confirmIssueModal();
+    });
+    document.getElementById('issueSelectAllBtn')?.addEventListener('click', () => {
+      state.issueModal.tracks.forEach(track => state.issueModal.selected.add(track));
+      renderIssueModalList();
+      renderIssueModalSummary({ speak: true });
+    });
+  }
+
+  /* ============ QR / BARCODE / PICKUP ПАРСИНГ ============ */
 
   function parseClientFromScan(raw) {
     const text = String(raw || '').trim();
@@ -1308,12 +2029,43 @@
 
     try {
       const json = JSON.parse(text);
-      if (json && (json.client != null || json.clientCode != null || json.clientId != null)) {
-        const code = normalizeClientCode(json.client ?? json.clientCode ?? json.clientId);
-        return code || null;
+      if (json) {
+        // Клиентский QR: { client, day, issuedAt, token } — token = суточный 6-значный код
+        const tokenDigits = normalizePickupDigits(json.token || json.pickupCode || json.code);
+        const userId = String(
+          json.userId || json.user_id || json.client || json.uid || ''
+        ).trim();
+        const day = json.day || json.date || '';
+
+        if (tokenDigits.length === 6 && userId) {
+          if (!day || verifyDailyPickupCode(userId, tokenDigits, day)) {
+            return { userId: userId, pickupCode: tokenDigits, day: day || localDayKey() };
+          }
+          return null;
+        }
+
+        if (tokenDigits.length === 6) {
+          return { pickupCode: tokenDigits, day: day || localDayKey() };
+        }
+
+        if (userId && !/^\d{1,8}$/.test(userId)) {
+          return { userId: userId };
+        }
+
+        if (json.clientCode != null || json.clientId != null ||
+            (json.client != null && /^\d{1,8}$/.test(String(json.client)))) {
+          const code = normalizeClientCode(json.clientCode ?? json.clientId ?? json.client);
+          return code || null;
+        }
+
+        if (userId) return { userId: userId };
       }
     } catch (e) {
       /* not JSON */
+    }
+
+    if (isPickupCodeInput(text)) {
+      return { pickupCode: normalizePickupDigits(text) };
     }
 
     const digits = normalizeClientCode(text);
@@ -1338,11 +2090,241 @@
       /* plain barcode */
     }
 
+    // Don't treat 6-digit pickup codes as tracks
+    if (isPickupCodeInput(text)) return null;
+
     const cleaned = text.replace(/\s+/g, '');
     if (/^[A-Z]{1,4}\d{4,}$/.test(cleaned)) return cleaned;
-    if (/^[A-Z0-9-]{5,}$/.test(cleaned) && /\d/.test(cleaned)) return cleaned;
+    if (/^[A-Z0-9-]{5,}$/.test(cleaned) && /\d/.test(cleaned) && /[A-Z]/.test(cleaned)) {
+      return cleaned;
+    }
 
-    return cleaned.length >= 4 ? cleaned : null;
+    return cleaned.length >= 5 && /[A-Z]/.test(cleaned) ? cleaned : null;
+  }
+
+  async function resolveIssueLookup(raw) {
+    const text = String(raw || '').trim();
+    if (!text) return { ok: false, reason: 'empty' };
+
+    // 1) QR JSON / pickup 6 digits / client code
+    const parsed = parseClientFromScan(text);
+
+    if (parsed && typeof parsed === 'object' && parsed.userId && parsed.pickupCode) {
+      const day = parsed.day || localDayKey();
+      if (!verifyDailyPickupCode(parsed.userId, parsed.pickupCode, day)) {
+        return { ok: false, reason: 'pickup' };
+      }
+      const clients = await loadClientsCache(false);
+      const client = clients.find(c =>
+        c.userId === parsed.userId || String(c.id) === parsed.userId
+      );
+      return {
+        ok: true,
+        clientCode: client ? client.clientCode : '',
+        userId: parsed.userId,
+        via: 'pickup-qr'
+      };
+    }
+
+    if (parsed && typeof parsed === 'object' && parsed.pickupCode) {
+      const client = await findClientByPickupCode(parsed.pickupCode);
+      if (!client) return { ok: false, reason: 'pickup' };
+      return {
+        ok: true,
+        clientCode: client.clientCode,
+        userId: client.userId,
+        via: 'pickup'
+      };
+    }
+
+    if (parsed && typeof parsed === 'object' && parsed.userId) {
+      const clients = await loadClientsCache(false);
+      const client = clients.find(c =>
+        c.userId === parsed.userId || String(c.id) === parsed.userId
+      );
+      if (client) {
+        return { ok: true, clientCode: client.clientCode, userId: client.userId, via: 'qr-user' };
+      }
+      return { ok: true, clientCode: '', userId: parsed.userId, via: 'qr-user' };
+    }
+
+    if (typeof parsed === 'string' && parsed) {
+      return { ok: true, clientCode: parsed, via: 'client' };
+    }
+
+    // 2) Track code → find shipment → its client
+    const track = parseTrackFromScan(text);
+    if (track) {
+      const shipment = state.shipments.find(s => s.track === track);
+      if (shipment) {
+        return {
+          ok: true,
+          clientCode: shipment.clientCode,
+          track: shipment.track,
+          via: 'track'
+        };
+      }
+      return { ok: false, reason: 'not_found', track };
+    }
+
+    // 3) Raw 6 digits already handled; try plain digits as pickup
+    if (isPickupCodeInput(text)) {
+      const client = await findClientByPickupCode(text);
+      if (!client) return { ok: false, reason: 'pickup' };
+      return { ok: true, clientCode: client.clientCode, userId: client.userId, via: 'pickup' };
+    }
+
+    return { ok: false, reason: 'not_found' };
+  }
+
+  function getArrivedForClient(clientCode) {
+    const code = normalizeClientCode(clientCode);
+    if (!code) return [];
+    return state.shipments.filter(s => s.clientCode === code && s.status === 'arrived');
+  }
+
+  async function runIssueLookup(raw, options) {
+    const opts = options || {};
+    const result = await resolveIssueLookup(raw);
+
+    if (!result.ok) {
+      state.selected.clear();
+      state.searchQuery = '';
+      state.activeFilter = 'arrived';
+      document.querySelectorAll('.filter-tabs__btn').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.filter === 'arrived')
+      );
+      renderTable();
+      speakIssueResult([]);
+      showToast(
+        result.reason === 'pickup' ? t('err_pickup_code') : t('toast_pickup_none')
+      );
+      return result;
+    }
+
+    let parcels = [];
+    if (result.track) {
+      const one = state.shipments.find(s => s.track === result.track && s.status === 'arrived');
+      parcels = one ? [one] : getArrivedForClient(result.clientCode);
+    } else {
+      parcels = getArrivedForClient(result.clientCode);
+    }
+
+    // Also try user_id linked parcels if client_code empty
+    if (parcels.length === 0 && result.userId) {
+      parcels = state.shipments.filter(s =>
+        s.status === 'arrived' &&
+        (s.userId === result.userId || s.clientCode === result.clientCode)
+      );
+    }
+
+    state.selected.clear();
+    parcels.forEach(s => state.selected.add(s.track));
+
+    state.activeFilter = 'arrived';
+    document.querySelectorAll('.filter-tabs__btn').forEach(b =>
+      b.classList.toggle('is-active', b.dataset.filter === 'arrived')
+    );
+
+    state.searchQuery = result.clientCode || result.userId || '';
+    renderTable();
+    updateBulkBar();
+
+    if (parcels.length === 0) {
+      speakIssueResult([]);
+      showToast(t('toast_pickup_none'));
+      return { ok: false, reason: 'not_found', parcels };
+    }
+
+    const totals = summarizeParcels(parcels);
+    showToast(t('toast_pickup_found', {
+      code: result.clientCode || '—',
+      count: parcels.length,
+      sum: Math.round(totals.total).toLocaleString('ru-RU')
+    }));
+
+    // Частичная выдача: окно со списком и галочками (озвучка внутри)
+    openIssueModal(parcels, result.clientCode);
+
+    return { ok: true, parcels, clientCode: result.clientCode };
+  }
+
+  /* ============ USB-СКАНЕР: ФОКУС ============ */
+
+  function getScannerField() {
+    if (state.scannerFocus === 'issue') {
+      return document.getElementById('searchInput');
+    }
+    return document.getElementById('trackInput');
+  }
+
+  function focusScannerField() {
+    if (!state.unlocked) return;
+    if (state.scanner.mode) return;
+    if (state.issueModal.open) return;
+    if (state.activeSection !== 'ops') return;
+    if (document.getElementById('settingsOverlay') && !document.getElementById('settingsOverlay').hidden) return;
+    if (document.getElementById('pinOverlay') && !document.getElementById('pinOverlay').hidden) return;
+    if (document.getElementById('deviceAuthOverlay') && !document.getElementById('deviceAuthOverlay').hidden) return;
+
+    const field = getScannerField();
+    if (!field) return;
+    try {
+      field.focus({ preventScroll: true });
+    } catch (e) {
+      field.focus();
+    }
+  }
+
+  function setScannerFocusTarget(target) {
+    state.scannerFocus = target === 'issue' ? 'issue' : 'track';
+    focusScannerField();
+  }
+
+  function initScannerFocus() {
+    const trackInput = document.getElementById('trackInput');
+    const searchInput = document.getElementById('searchInput');
+    const receivePanel = document.getElementById('receivePanel');
+    const shipmentsPanel = document.getElementById('shipmentsPanel');
+
+    trackInput?.addEventListener('focus', () => {
+      state.scannerFocus = 'track';
+    });
+    searchInput?.addEventListener('focus', () => {
+      state.scannerFocus = 'issue';
+    });
+
+    receivePanel?.addEventListener('pointerdown', () => {
+      state.scannerFocus = 'track';
+    });
+    shipmentsPanel?.addEventListener('pointerdown', () => {
+      state.scannerFocus = 'issue';
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!state.unlocked) return;
+      if (state.issueModal.open) return;
+      const el = e.target;
+      if (!(el instanceof Element)) return;
+
+      if (
+        el.closest('input, textarea, select, button, a, label, .scanner-overlay, .modal-overlay, .bulk-bar, .section-nav')
+      ) {
+        return;
+      }
+
+      focusScannerField();
+    });
+
+    // Prefetch voices
+    if (window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = function () {
+        window.speechSynthesis.getVoices();
+      };
+    }
+
+    setTimeout(focusScannerField, 100);
   }
 
   /* ============ СКАНЕР ============ */
@@ -1457,12 +2439,37 @@
         input.value = track;
         input.focus();
       }
+      setScannerFocusTarget('track');
       showToast(t('toast_scan_track'));
       return;
     }
 
     if (mode === 'client') {
-      const code = parseClientFromScan(raw);
+      const parsed = parseClientFromScan(raw);
+      let code = null;
+
+      if (typeof parsed === 'string') {
+        code = parsed;
+      } else if (parsed && parsed.userId && parsed.pickupCode) {
+        const day = parsed.day || localDayKey();
+        if (verifyDailyPickupCode(parsed.userId, parsed.pickupCode, day)) {
+          const clients = await loadClientsCache(false);
+          const client = clients.find(c =>
+            c.userId === parsed.userId || String(c.id) === parsed.userId
+          );
+          code = client ? client.clientCode : null;
+        }
+      } else if (parsed && parsed.pickupCode) {
+        const client = await findClientByPickupCode(parsed.pickupCode);
+        code = client ? client.clientCode : null;
+      } else if (parsed && parsed.userId) {
+        const clients = await loadClientsCache(false);
+        const client = clients.find(c =>
+          c.userId === parsed.userId || String(c.id) === parsed.userId
+        );
+        code = client ? client.clientCode : null;
+      }
+
       if (!code) {
         showToast(t('err_qr_invalid'));
         return;
@@ -1477,13 +2484,8 @@
     }
 
     if (mode === 'quick') {
-      const code = parseClientFromScan(raw);
-      if (!code) {
-        showToast(t('err_qr_invalid'));
-        return;
-      }
-      const result = await issueAllForClient(code);
-      if (!result.ok) showToast(result.error);
+      await runIssueLookup(raw, { autoIssue: true });
+      setScannerFocusTarget('issue');
     }
   }
 
@@ -1491,6 +2493,7 @@
 
   function initReceiveForm() {
     const form = document.getElementById('receiveForm');
+    const trackInput = document.getElementById('trackInput');
     const weightInput = document.getElementById('weightInput');
     const priceInput = document.getElementById('priceInput');
     const errEl = document.getElementById('receiveError');
@@ -1509,6 +2512,42 @@
       state.priceManual = true;
     });
 
+    // USB-сканер: Enter → приёмка (submit) или переход к следующему полю
+    trackInput?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+
+      const track = normalizeTrack(trackInput.value);
+      if (!track) {
+        focusScannerField();
+        return;
+      }
+
+      trackInput.value = track;
+      form.dataset.lastTrack = track;
+
+      const clientVal = String(document.getElementById('clientInput')?.value || '').trim();
+      const weightVal = String(weightInput?.value || '').trim();
+      const priceVal = String(priceInput?.value || '').trim();
+
+      if (clientVal && weightVal && priceVal) {
+        form.requestSubmit();
+        return;
+      }
+
+      // Трек принят — сразу чистим поле под следующий скан, трек держим в dataset
+      trackInput.value = '';
+      showToast(track);
+
+      if (!clientVal) {
+        document.getElementById('clientInput')?.focus();
+      } else if (!weightVal) {
+        weightInput?.focus();
+      } else {
+        priceInput?.focus();
+      }
+    });
+
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
       showMessage(errEl, '');
@@ -1518,8 +2557,9 @@
       if (submitBtn) submitBtn.disabled = true;
 
       try {
+        const trackValue = trackInput?.value || form.dataset.lastTrack || '';
         const result = await addShipment({
-          track: document.getElementById('trackInput')?.value,
+          track: trackValue,
           clientCode: document.getElementById('clientInput')?.value,
           weightKg: weightInput?.value,
           priceSom: priceInput?.value
@@ -1527,6 +2567,9 @@
 
         if (!result.ok) {
           showMessage(errEl, result.error);
+          if (!trackInput?.value && form.dataset.lastTrack) {
+            trackInput.value = form.dataset.lastTrack;
+          }
           return;
         }
 
@@ -1534,8 +2577,10 @@
         showMessage(okEl, okText);
         alert(okText);
         form.reset();
+        delete form.dataset.lastTrack;
         state.priceManual = false;
         updatePriceFormula();
+        setScannerFocusTarget('track');
 
         const row = document.querySelector(
           '.shipments-table tbody tr[data-track="' + result.shipment.track + '"]'
@@ -1547,6 +2592,7 @@
         }
       } finally {
         if (submitBtn) submitBtn.disabled = false;
+        focusScannerField();
       }
     });
 
@@ -1554,28 +2600,25 @@
   }
 
   function initSearchAndFilters() {
-    document.getElementById('searchForm')?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      state.searchQuery = document.getElementById('searchInput')?.value || '';
-      renderTable();
+    const searchInput = document.getElementById('searchInput');
 
-      const list = getFilteredShipments();
-      if (state.searchQuery.trim() && list.length === 0) {
-        showToast(t('err_not_found'));
-      } else if (list.length === 1) {
-        const row = document.querySelector(
-          '.shipments-table tbody tr[data-track="' + list[0].track + '"]'
-        );
-        if (row) {
-          row.classList.add('is-highlight');
-          row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          setTimeout(() => row.classList.remove('is-highlight'), 1800);
-        }
-      }
+    document.getElementById('searchForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const raw = searchInput?.value || '';
+      if (!raw.trim()) return;
+
+      await runIssueLookup(raw, { autoIssue: false });
+
+      if (searchInput) searchInput.value = '';
+      setScannerFocusTarget('issue');
+      focusScannerField();
     });
 
-    document.getElementById('searchInput')?.addEventListener('input', (e) => {
-      state.searchQuery = e.target.value;
+    // Live filter for typed queries (не для 6-значного кода — ждём Enter)
+    searchInput?.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (isPickupCodeInput(val)) return;
+      state.searchQuery = val;
       renderTable();
     });
 
@@ -1617,6 +2660,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (state.scanner.mode) stopScanner();
+      else if (state.issueModal.open) closeIssueModal();
       else if (!document.getElementById('settingsOverlay')?.hidden) closeSettings();
     });
   }
@@ -1651,6 +2695,10 @@
     initBulkActions();
     initReportUI();
     initScannerButtons();
+    initScannerFocus();
+    initIssueModal();
+    initSectionNav();
+    setActiveSection('ops');
 
     if (!isDeviceAuthorized()) {
       hideAllGates();
