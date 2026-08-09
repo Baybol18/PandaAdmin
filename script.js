@@ -57,6 +57,7 @@
       client_parcels_title: 'Посылки клиента',
       client_parcels_empty: 'У клиента нет посылок',
       track_blind_aria: 'Трек нечитаемый',
+      track_unrecognized: 'трек код не распознан',
       added_ok_multi: 'Добавлено на склад: {count}',
       err_tracks: 'Укажите хотя бы один трек-код',
       err_track_blind: 'Отметьте ☐ или введите трек',
@@ -231,6 +232,7 @@
       client_parcels_title: 'Кардардын посылкалары',
       client_parcels_empty: 'Кардардын посылкасы жок',
       track_blind_aria: 'Трек окулбайт',
+      track_unrecognized: 'трек код не распознан',
       added_ok_multi: 'Складга кошулду: {count}',
       err_tracks: 'Жок дегенде бир трек-код жазыңыз',
       err_track_blind: '☐ белгилеңиз же трек жазыңыз',
@@ -613,8 +615,22 @@
     return '+' + n;
   }
 
+  function isUnrecognizedTrackLabel(value) {
+    const raw = String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    return raw === 'трек код не распознан' || raw.indexOf('трек код не распознан') === 0;
+  }
+
+  function unrecognizedTrackLabel() {
+    return t('track_unrecognized') || 'трек код не распознан';
+  }
+
   function normalizeTrack(value) {
-    return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+    const raw = String(value || '').trim();
+    if (isUnrecognizedTrackLabel(raw)) {
+      // Сохраняем читаемую подпись как есть (без UPPERCASE / склейки)
+      return raw.replace(/\s+/g, ' ').toLowerCase();
+    }
+    return raw.toUpperCase().replace(/\s+/g, '');
   }
 
   function normalizeClientCode(value) {
@@ -2907,8 +2923,12 @@
       input.classList.toggle('is-blind', on);
       if (on) {
         input.dataset.blind = '1';
+        input.value = unrecognizedTrackLabel();
+        input.readOnly = true;
       } else {
         delete input.dataset.blind;
+        input.readOnly = false;
+        if (isUnrecognizedTrackLabel(input.value)) input.value = '';
       }
     };
 
@@ -3015,6 +3035,7 @@
     const rows = Array.from(wrap.querySelectorAll('.track-field'));
     const tracks = [];
     const seen = new Set();
+    let blindCount = 0;
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -3023,8 +3044,10 @@
       const blind = check && check.classList.contains('is-on');
       let track = normalizeTrack(input && input.value);
 
-      if (!track && blind) {
-        track = 'NR' + Date.now().toString(36).toUpperCase() + String(i + 1);
+      if (blind || isUnrecognizedTrackLabel(track)) {
+        blindCount += 1;
+        track = unrecognizedTrackLabel();
+        if (blindCount > 1) track = track + ' #' + blindCount;
       }
 
       if (!track) {
