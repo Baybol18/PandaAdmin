@@ -1615,12 +1615,127 @@ html[data-theme="dark"] .toast {
   color: var(--ink-soft);
 }
 
-.clients-table .phone-cell {
+.clients-table .field__hint-text {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+
+.track-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.track-field {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+.track-field__check {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  background: var(--white);
+  color: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background .2s, border-color .2s, color .2s;
+}
+
+.track-field__check svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.track-field__check.is-on {
+  background: var(--green-brand);
+  border-color: var(--green-brand);
+  color: #fff;
+}
+
+.track-field__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.track-field__input.is-blind {
+  opacity: .55;
+}
+
+.track-field__remove {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.track-field__remove svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.track-field__remove:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
+.phone-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
+
+.btn--client-parcels {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--green-brand) 45%, var(--line));
+  background: color-mix(in srgb, var(--green-pale) 70%, var(--white));
+  color: var(--green-deep);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn--client-parcels:hover {
+  border-color: var(--green-brand);
+}
+
+.client-parcels-filters {
+  margin-bottom: 4px;
+}
+
+.modal--client-parcels {
+  width: min(640px, 100%);
+}
+
 
 .btn--wa {
   display: inline-flex;

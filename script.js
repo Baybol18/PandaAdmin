@@ -7,7 +7,7 @@
   const SETTINGS_KEY = 'pandaCargo_admin_settings';
   const ACCESS_FLAG_KEY = 'access_granted';
   const ACCESS_SECRET = 'pd_sec_8f92k4x1';
-  const PRICE_PER_KG = 250;
+  const PRICE_PER_KG = 260;
   const STORAGE_FREE_DAYS = 5;
   const STORAGE_FEE_PER_DAY = 10;
   /** Код страны для WhatsApp (Кыргызстан) */
@@ -50,8 +50,16 @@
       receive_subtitle: 'Сканируйте или введите данные вручную',
       track_label: 'Трек-код',
       track_placeholder: 'CN2026118',
+      track_multi_hint: 'Enter — следующее поле · Del — удалить · ☐ — трек нечитаемый',
       client_label: 'Код клиента',
       client_placeholder: '126 или PC-126',
+      client_parcels_btn: 'Посылки',
+      client_parcels_title: 'Посылки клиента',
+      client_parcels_empty: 'У клиента нет посылок',
+      track_blind_aria: 'Трек нечитаемый',
+      added_ok_multi: 'Добавлено на склад: {count}',
+      err_tracks: 'Укажите хотя бы один трек-код',
+      err_track_blind: 'Отметьте ☐ или введите трек',
       weight_label: 'Вес (кг)',
       weight_placeholder: '3.2',
       price_label: 'Стоимость (сом)',
@@ -216,8 +224,16 @@
       receive_subtitle: 'Сканерлеңиз же кол менен киргизиңиз',
       track_label: 'Трек-код',
       track_placeholder: 'CN2026118',
+      track_multi_hint: 'Enter — кийинки талаа · Del — өчүрүү · ☐ — трек окулбайт',
       client_label: 'Кардар коду',
       client_placeholder: '126 же PC-126',
+      client_parcels_btn: 'Посылкалар',
+      client_parcels_title: 'Кардардын посылкалары',
+      client_parcels_empty: 'Кардардын посылкасы жок',
+      track_blind_aria: 'Трек окулбайт',
+      added_ok_multi: 'Складга кошулду: {count}',
+      err_tracks: 'Жок дегенде бир трек-код жазыңыз',
+      err_track_blind: '☐ белгилеңиз же трек жазыңыз',
       weight_label: 'Салмак (кг)',
       weight_placeholder: '3.2',
       price_label: 'Баасы (сом)',
@@ -387,7 +403,16 @@
       clientCode: '',
       tracks: [],
       selected: new Set(),
-      speakOnChange: true
+      speakOnChange: true,
+      busy: false
+    },
+    clientParcelsModal: {
+      open: false,
+      clientCode: '',
+      userId: '',
+      filter: 'all',
+      selected: new Set(),
+      busy: false
     }
   };
 
@@ -645,7 +670,7 @@
     el.textContent = message;
   }
 
-  function showToast(message) {
+  function showToast(message, durationMs) {
     const el = document.getElementById('toast');
     if (!el) return;
     el.textContent = message;
@@ -653,7 +678,7 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       el.hidden = true;
-    }, 3200);
+    }, typeof durationMs === 'number' ? durationMs : 3200);
   }
 
   function escapeHtml(str) {
@@ -1722,6 +1747,15 @@
         phoneTd.appendChild(link);
       }
 
+      const parcelsBtn = document.createElement('button');
+      parcelsBtn.type = 'button';
+      parcelsBtn.className = 'btn--client-parcels';
+      parcelsBtn.textContent = t('client_parcels_btn');
+      parcelsBtn.addEventListener('click', () => {
+        openClientParcelsModal(client);
+      });
+      phoneTd.appendChild(parcelsBtn);
+
       const codeTd = document.createElement('td');
       codeTd.className = 'cell-mono';
       codeTd.textContent = formatClientLabel(client.clientCode);
@@ -1746,6 +1780,199 @@
     const at = new Date(raw);
     if (Number.isNaN(at.getTime())) return false;
     return localDayKey(at) === localDayKey(new Date());
+  }
+
+  /* ============ ПОСЫЛКИ КЛИЕНТА (модалка) ============ */
+
+  function getClientParcelsFiltered() {
+    const code = normalizeClientCode(state.clientParcelsModal.clientCode);
+    const uid = String(state.clientParcelsModal.userId || '').trim();
+    let list = state.shipments.filter(s => {
+      if (code && s.clientCode === code) return true;
+      if (uid && s.userId === uid) return true;
+      return false;
+    });
+
+    const f = state.clientParcelsModal.filter;
+    if (f === 'arrived') list = list.filter(s => s.status === 'arrived');
+    if (f === 'received') list = list.filter(s => s.status === 'received');
+    return list.sort((a, b) => {
+      if (a.status !== b.status) return a.status === 'arrived' ? -1 : 1;
+      return String(b.updatedAt).localeCompare(String(a.updatedAt));
+    });
+  }
+
+  function renderClientParcelsModal() {
+    const listEl = document.getElementById('clientParcelsList');
+    const emptyEl = document.getElementById('clientParcelsEmpty');
+    if (!listEl) return;
+
+    const list = getClientParcelsFiltered();
+    listEl.innerHTML = '';
+
+    if (list.length === 0) {
+      if (emptyEl) {
+        emptyEl.hidden = false;
+        emptyEl.textContent = t('client_parcels_empty');
+      }
+    } else if (emptyEl) {
+      emptyEl.hidden = true;
+    }
+
+    list.forEach(shipment => {
+      const canIssue = shipment.status === 'arrived';
+      const checked = state.clientParcelsModal.selected.has(shipment.track);
+      const card = document.createElement('label');
+      card.className = 'issue-card' + (checked ? ' is-checked' : '');
+
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'row-check';
+      check.checked = checked;
+      check.disabled = !canIssue;
+
+      const body = document.createElement('div');
+      body.innerHTML =
+        '<p class="issue-card__track">' + escapeHtml(shipment.track) + '</p>' +
+        '<p class="issue-card__meta">' +
+          escapeHtml(shipment.weightKg + ' ' + t('kg')) + ' · ' +
+          escapeHtml(formatDateShort(shipment.createdAt || shipment.updatedAt)) + ' · ' +
+          escapeHtml(shipment.status === 'received' ? t('status_received') : t('status_arrived')) +
+        '</p>';
+
+      const price = document.createElement('div');
+      price.className = 'issue-card__price';
+      price.textContent = formatSom(getShipmentTotalDue(shipment));
+
+      if (canIssue) {
+        check.addEventListener('change', () => {
+          if (check.checked) state.clientParcelsModal.selected.add(shipment.track);
+          else state.clientParcelsModal.selected.delete(shipment.track);
+          card.classList.toggle('is-checked', check.checked);
+          updateClientParcelsSummary();
+        });
+      }
+
+      card.appendChild(check);
+      card.appendChild(body);
+      card.appendChild(price);
+      listEl.appendChild(card);
+    });
+
+    updateClientParcelsSummary();
+  }
+
+  function updateClientParcelsSummary() {
+    const selected = state.shipments.filter(
+      s => state.clientParcelsModal.selected.has(s.track) && s.status === 'arrived'
+    );
+    const totals = summarizeParcels(selected);
+    const countEl = document.getElementById('clientParcelsCount');
+    const totalEl = document.getElementById('clientParcelsTotal');
+    const btn = document.getElementById('clientParcelsIssueBtn');
+    if (countEl) countEl.textContent = String(totals.count);
+    if (totalEl) totalEl.textContent = formatSom(totals.total);
+    if (btn) btn.disabled = totals.count === 0 || state.clientParcelsModal.busy;
+  }
+
+  async function openClientParcelsModal(client) {
+    await reloadShipments();
+
+    state.clientParcelsModal.open = true;
+    state.clientParcelsModal.clientCode = normalizeClientCode(client.clientCode);
+    state.clientParcelsModal.userId = String(client.userId || client.id || '');
+    state.clientParcelsModal.filter = 'all';
+    state.clientParcelsModal.selected = new Set();
+
+    const overlay = document.getElementById('clientParcelsOverlay');
+    if (overlay) overlay.hidden = false;
+
+    const label = document.getElementById('clientParcelsLabel');
+    if (label) {
+      label.textContent = formatClientLabel(state.clientParcelsModal.clientCode) +
+        (client.fullName || client.email ? ' · ' + mapClientDisplayName(client) : '');
+    }
+
+    document.querySelectorAll('#clientParcelsFilters .filter-tabs__btn').forEach(b => {
+      b.classList.toggle('is-active', b.dataset.filter === 'all');
+    });
+
+    renderClientParcelsModal();
+  }
+
+  function closeClientParcelsModal() {
+    state.clientParcelsModal.open = false;
+    state.clientParcelsModal.selected.clear();
+    const overlay = document.getElementById('clientParcelsOverlay');
+    if (overlay) overlay.hidden = true;
+  }
+
+  async function confirmClientParcelsIssue() {
+    if (state.clientParcelsModal.busy) return;
+    const selected = state.shipments.filter(
+      s => state.clientParcelsModal.selected.has(s.track) && s.status === 'arrived'
+    );
+    if (!selected.length) {
+      showToast(t('toast_bulk_none'));
+      return;
+    }
+
+    state.clientParcelsModal.busy = true;
+    const btn = document.getElementById('clientParcelsIssueBtn');
+    if (btn) btn.disabled = true;
+
+    let count = 0;
+    try {
+      for (const s of selected) {
+        const result = await deliverParcel(s);
+        if (result.ok) {
+          count += 1;
+          state.clientParcelsModal.selected.delete(s.track);
+        }
+      }
+      await reloadShipments();
+      renderClientParcelsModal();
+      renderCashDay();
+      if (count === 0) showToast(t('toast_bulk_none'));
+      else showToast(t('toast_bulk_issued', { count }), 1500);
+    } finally {
+      state.clientParcelsModal.busy = false;
+      updateClientParcelsSummary();
+    }
+  }
+
+  function initClientParcelsModal() {
+    document.getElementById('clientParcelsClose')?.addEventListener('click', closeClientParcelsModal);
+    document.getElementById('clientParcelsOverlay')?.addEventListener('click', (e) => {
+      if (e.target.id === 'clientParcelsOverlay') closeClientParcelsModal();
+    });
+
+    document.getElementById('clientParcelsFilters')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.filter-tabs__btn');
+      if (!btn) return;
+      document.querySelectorAll('#clientParcelsFilters .filter-tabs__btn').forEach(b =>
+        b.classList.toggle('is-active', b === btn)
+      );
+      state.clientParcelsModal.filter = btn.dataset.filter || 'all';
+      renderClientParcelsModal();
+    });
+
+    document.getElementById('clientParcelsSelectArrived')?.addEventListener('click', () => {
+      getClientParcelsFiltered()
+        .filter(s => s.status === 'arrived')
+        .forEach(s => state.clientParcelsModal.selected.add(s.track));
+      renderClientParcelsModal();
+    });
+
+    const issueBtn = document.getElementById('clientParcelsIssueBtn');
+    issueBtn?.addEventListener('pointerup', (e) => {
+      e.preventDefault();
+      confirmClientParcelsIssue();
+    });
+    issueBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      confirmClientParcelsIssue();
+    });
   }
 
   function getTodayIssuedParcels() {
@@ -2033,14 +2260,20 @@
   }
 
   async function confirmIssueModal() {
+    if (state.issueModal.busy) return;
+
     const selected = getIssueSelectedParcels();
     if (selected.length === 0) {
       showToast(t('toast_bulk_none'));
       return;
     }
 
+    state.issueModal.busy = true;
     const confirmBtn = document.getElementById('issueConfirmBtn');
-    if (confirmBtn) confirmBtn.disabled = true;
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.classList.add('is-busy');
+    }
 
     let count = 0;
     try {
@@ -2050,6 +2283,8 @@
           count += 1;
           state.selected.delete(s.track);
           state.issueModal.selected.delete(s.track);
+        } else {
+          console.error('deliver failed:', result.error, s.track);
         }
       }
 
@@ -2060,11 +2295,15 @@
         return;
       }
 
-      showToast(t('toast_bulk_issued', { count }));
+      showToast(t('toast_bulk_issued', { count }), 1500);
       closeIssueModal();
       renderCashDay();
     } finally {
-      if (confirmBtn) confirmBtn.disabled = false;
+      state.issueModal.busy = false;
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.classList.remove('is-busy');
+      }
     }
   }
 
@@ -2073,9 +2312,19 @@
     document.getElementById('issueOverlay')?.addEventListener('click', (e) => {
       if (e.target.id === 'issueOverlay') closeIssueModal();
     });
-    document.getElementById('issueConfirmBtn')?.addEventListener('click', () => {
+
+    const confirmBtn = document.getElementById('issueConfirmBtn');
+    confirmBtn?.addEventListener('pointerup', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       confirmIssueModal();
     });
+    confirmBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      confirmIssueModal();
+    });
+
     document.getElementById('issueSelectAllBtn')?.addEventListener('click', () => {
       state.issueModal.tracks.forEach(track => state.issueModal.selected.add(track));
       renderIssueModalList();
@@ -2156,12 +2405,14 @@
     if (isPickupCodeInput(text)) return null;
 
     const cleaned = text.replace(/\s+/g, '');
+    // Числовые штрих-коды (EAN и т.п.)
+    if (/^\d{7,}$/.test(cleaned)) return cleaned;
     if (/^[A-Z]{1,4}\d{4,}$/.test(cleaned)) return cleaned;
     if (/^[A-Z0-9-]{5,}$/.test(cleaned) && /\d/.test(cleaned) && /[A-Z]/.test(cleaned)) {
       return cleaned;
     }
 
-    return cleaned.length >= 5 && /[A-Z]/.test(cleaned) ? cleaned : null;
+    return cleaned.length >= 5 ? cleaned : null;
   }
 
   async function resolveIssueLookup(raw) {
@@ -2239,10 +2490,53 @@
     return { ok: false, reason: 'not_found' };
   }
 
-  function getArrivedForClient(clientCode) {
+  function getArrivedForClient(clientCode, userId) {
     const code = normalizeClientCode(clientCode);
-    if (!code) return [];
-    return state.shipments.filter(s => s.clientCode === code && s.status === 'arrived');
+    const uid = String(userId || '').trim();
+    return state.shipments.filter(s => {
+      if (s.status !== 'arrived') return false;
+      if (code && s.clientCode && s.clientCode === code) return true;
+      if (uid && s.userId && s.userId === uid) return true;
+      return false;
+    });
+  }
+
+  async function collectClientParcels(clientCode, userId) {
+    const code = normalizeClientCode(clientCode);
+    const uid = String(userId || '').trim();
+
+    // Обновляем данные со склада перед поиском
+    try {
+      state.shipments = await fetchParcels();
+    } catch (e) {
+      console.error('parcels reload before issue lookup:', e);
+    }
+
+    const clients = await loadClientsCache(true);
+    const client = clients.find(c =>
+      (code && c.clientCode === code) ||
+      (uid && (c.userId === uid || String(c.id) === uid))
+    );
+
+    const codes = new Set([code, client && client.clientCode].filter(Boolean).map(String));
+    const ids = new Set(
+      [uid, client && client.userId, client && client.id]
+        .filter(Boolean)
+        .map(String)
+    );
+
+    const list = state.shipments.filter(s => {
+      if (codes.has(String(s.clientCode || ''))) return true;
+      if (s.userId && ids.has(String(s.userId))) return true;
+      return false;
+    });
+
+    return {
+      clientCode: (client && client.clientCode) || code || '',
+      userId: (client && client.userId) || uid || '',
+      all: list,
+      arrived: list.filter(s => s.status === 'arrived')
+    };
   }
 
   async function runIssueLookup(raw, options) {
@@ -2265,19 +2559,17 @@
     }
 
     let parcels = [];
+
     if (result.track) {
       const one = state.shipments.find(s => s.track === result.track && s.status === 'arrived');
-      parcels = one ? [one] : getArrivedForClient(result.clientCode);
-    } else {
-      parcels = getArrivedForClient(result.clientCode);
+      if (one) parcels = [one];
     }
 
-    // Also try user_id linked parcels if client_code empty
-    if (parcels.length === 0 && result.userId) {
-      parcels = state.shipments.filter(s =>
-        s.status === 'arrived' &&
-        (s.userId === result.userId || s.clientCode === result.clientCode)
-      );
+    if (parcels.length === 0) {
+      const pack = await collectClientParcels(result.clientCode, result.userId);
+      parcels = pack.arrived;
+      if (!result.clientCode && pack.clientCode) result.clientCode = pack.clientCode;
+      renderTable();
     }
 
     state.selected.clear();
@@ -2305,7 +2597,6 @@
       sum: Math.round(totals.total).toLocaleString('ru-RU')
     }));
 
-    // Частичная выдача: окно со списком и галочками (озвучка внутри)
     openIssueModal(parcels, result.clientCode);
 
     return { ok: true, parcels, clientCode: result.clientCode };
@@ -2313,21 +2604,45 @@
 
   /* ============ USB-СКАНЕР: ФОКУС ============ */
 
+  function getActiveTrackInput() {
+    const focused = document.querySelector('#trackFields .track-field__input:focus');
+    if (focused) return focused;
+    const inputs = document.querySelectorAll('#trackFields .track-field__input');
+    if (!inputs.length) return null;
+    // Предпочитаем пустое поле, иначе последнее
+    for (let i = 0; i < inputs.length; i++) {
+      if (!String(inputs[i].value || '').trim() && !inputs[i].disabled) return inputs[i];
+    }
+    return inputs[inputs.length - 1];
+  }
+
   function getScannerField() {
     if (state.scannerFocus === 'issue') {
       return document.getElementById('searchInput');
     }
-    return document.getElementById('trackInput');
+    return getActiveTrackInput();
   }
 
   function focusScannerField() {
     if (!state.unlocked) return;
     if (state.scanner.mode) return;
     if (state.issueModal.open) return;
+    if (state.clientParcelsModal.open) return;
     if (state.activeSection !== 'ops') return;
     if (document.getElementById('settingsOverlay') && !document.getElementById('settingsOverlay').hidden) return;
     if (document.getElementById('pinOverlay') && !document.getElementById('pinOverlay').hidden) return;
     if (document.getElementById('deviceAuthOverlay') && !document.getElementById('deviceAuthOverlay').hidden) return;
+
+    // Не перехватываем фокус, если пользователь уже в другом поле формы приёмки
+    const active = document.activeElement;
+    if (
+      active &&
+      active.closest &&
+      active.closest('#receiveForm') &&
+      !active.classList.contains('track-field__input')
+    ) {
+      return;
+    }
 
     const field = getScannerField();
     if (!field) return;
@@ -2344,14 +2659,17 @@
   }
 
   function initScannerFocus() {
-    const trackInput = document.getElementById('trackInput');
     const searchInput = document.getElementById('searchInput');
     const receivePanel = document.getElementById('receivePanel');
     const shipmentsPanel = document.getElementById('shipmentsPanel');
+    const trackFields = document.getElementById('trackFields');
 
-    trackInput?.addEventListener('focus', () => {
-      state.scannerFocus = 'track';
+    trackFields?.addEventListener('focusin', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('track-field__input')) {
+        state.scannerFocus = 'track';
+      }
     });
+
     searchInput?.addEventListener('focus', () => {
       state.scannerFocus = 'issue';
     });
@@ -2366,11 +2684,12 @@
     document.addEventListener('click', (e) => {
       if (!state.unlocked) return;
       if (state.issueModal.open) return;
+      if (state.clientParcelsModal.open) return;
       const el = e.target;
       if (!(el instanceof Element)) return;
 
       if (
-        el.closest('input, textarea, select, button, a, label, .scanner-overlay, .modal-overlay, .bulk-bar, .section-nav')
+        el.closest('input, textarea, select, button, a, label, .scanner-overlay, .modal-overlay, .bulk-bar, .section-nav, .track-field')
       ) {
         return;
       }
@@ -2378,7 +2697,6 @@
       focusScannerField();
     });
 
-    // Prefetch voices
     if (window.speechSynthesis) {
       window.speechSynthesis.getVoices();
       window.speechSynthesis.onvoiceschanged = function () {
@@ -2491,18 +2809,23 @@
 
   async function handleScanResult(mode, raw) {
     if (mode === 'track') {
-      const track = parseTrackFromScan(raw);
+      const track = parseTrackFromScan(raw) || normalizeTrack(raw);
       if (!track) {
         showToast(t('err_not_found'));
         return;
       }
-      const input = document.getElementById('trackInput');
+      const input = getActiveTrackInput();
       if (input) {
         input.value = track;
+        input.disabled = false;
+        const row = input.closest('.track-field');
+        const check = row && row.querySelector('.track-field__check');
+        if (check) check.classList.remove('is-on');
+        input.classList.remove('is-blind');
         input.focus();
       }
       setScannerFocusTarget('track');
-      showToast(t('toast_scan_track'));
+      showToast(t('toast_scan_track'), 1200);
       return;
     }
 
@@ -2541,25 +2864,196 @@
         input.value = formatClientLabel(code);
         input.focus();
       }
-      showToast(t('toast_scan_client'));
+      showToast(t('toast_scan_client'), 1200);
       return;
     }
 
     if (mode === 'quick') {
-      await runIssueLookup(raw, { autoIssue: true });
+      await runIssueLookup(raw, { autoIssue: false });
       setScannerFocusTarget('issue');
     }
+  }
+
+  /* ============ МУЛЬТИ-ТРЕК ПРИЁМКА ============ */
+
+  function createTrackFieldRow(initialValue) {
+    const row = document.createElement('div');
+    row.className = 'track-field';
+
+    const checkBtn = document.createElement('button');
+    checkBtn.type = 'button';
+    checkBtn.className = 'track-field__check';
+    checkBtn.setAttribute('aria-label', t('track_blind_aria'));
+    checkBtn.title = t('track_blind_aria');
+    checkBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>';
+
+    const input = document.createElement('input');
+    input.className = 'field__input field__input--mono track-field__input';
+    input.type = 'text';
+    input.autocomplete = 'off';
+    input.placeholder = t('track_placeholder');
+    if (initialValue) input.value = initialValue;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'track-field__remove';
+    removeBtn.setAttribute('aria-label', 'Delete');
+    removeBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+
+    const syncBlind = () => {
+      const on = checkBtn.classList.contains('is-on');
+      input.classList.toggle('is-blind', on);
+      if (on) {
+        input.dataset.blind = '1';
+      } else {
+        delete input.dataset.blind;
+      }
+    };
+
+    checkBtn.addEventListener('click', () => {
+      checkBtn.classList.toggle('is-on');
+      syncBlind();
+      if (!checkBtn.classList.contains('is-on')) input.focus();
+    });
+
+    removeBtn.addEventListener('click', () => {
+      const wrap = document.getElementById('trackFields');
+      if (!wrap) return;
+      if (wrap.querySelectorAll('.track-field').length <= 1) {
+        input.value = '';
+        checkBtn.classList.remove('is-on');
+        syncBlind();
+        input.focus();
+        return;
+      }
+      row.remove();
+      updateTrackRemoveButtons();
+      focusScannerField();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        const track = normalizeTrack(input.value);
+        if (track) input.value = track;
+
+        if (!track && !checkBtn.classList.contains('is-on')) {
+          return;
+        }
+
+        // Новое поле для следующего скана — фокус остаётся на треках
+        const next = appendTrackField('');
+        if (next) next.focus();
+        updateTrackRemoveButtons();
+        return;
+      }
+
+      if (e.key === 'Delete' || (e.key === 'Backspace' && !String(input.value || '') && !e.repeat)) {
+        const wrap = document.getElementById('trackFields');
+        const rows = wrap ? wrap.querySelectorAll('.track-field') : [];
+        if (e.key === 'Delete' || (e.key === 'Backspace' && rows.length > 1 && !String(input.value || ''))) {
+          e.preventDefault();
+          if (rows.length <= 1) {
+            input.value = '';
+            return;
+          }
+          const prev = row.previousElementSibling;
+          const next = row.nextElementSibling;
+          row.remove();
+          updateTrackRemoveButtons();
+          const focusRow = prev || next;
+          const focusInput = focusRow && focusRow.querySelector('.track-field__input');
+          if (focusInput) focusInput.focus();
+        }
+      }
+    });
+
+    // Не даём сканеру увести Enter на submit формы
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') e.preventDefault();
+    });
+
+    row.appendChild(checkBtn);
+    row.appendChild(input);
+    row.appendChild(removeBtn);
+    return row;
+  }
+
+  function appendTrackField(value) {
+    const wrap = document.getElementById('trackFields');
+    if (!wrap) return null;
+    const row = createTrackFieldRow(value || '');
+    wrap.appendChild(row);
+    updateTrackRemoveButtons();
+    return row.querySelector('.track-field__input');
+  }
+
+  function resetTrackFields() {
+    const wrap = document.getElementById('trackFields');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    appendTrackField('');
+  }
+
+  function updateTrackRemoveButtons() {
+    const wrap = document.getElementById('trackFields');
+    if (!wrap) return;
+    const rows = wrap.querySelectorAll('.track-field');
+    rows.forEach(row => {
+      const btn = row.querySelector('.track-field__remove');
+      if (btn) btn.disabled = rows.length <= 1;
+    });
+  }
+
+  function collectReceiveTracks() {
+    const wrap = document.getElementById('trackFields');
+    if (!wrap) return { ok: false, error: t('err_tracks'), tracks: [] };
+
+    const rows = Array.from(wrap.querySelectorAll('.track-field'));
+    const tracks = [];
+    const seen = new Set();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const input = row.querySelector('.track-field__input');
+      const check = row.querySelector('.track-field__check');
+      const blind = check && check.classList.contains('is-on');
+      let track = normalizeTrack(input && input.value);
+
+      if (!track && blind) {
+        track = 'NR' + Date.now().toString(36).toUpperCase() + String(i + 1);
+      }
+
+      if (!track) {
+        // Пустые необязательные хвосты игнорируем
+        continue;
+      }
+
+      if (seen.has(track)) continue;
+      seen.add(track);
+      tracks.push(track);
+    }
+
+    if (tracks.length === 0) {
+      return { ok: false, error: t('err_tracks'), tracks: [] };
+    }
+
+    return { ok: true, tracks: tracks };
   }
 
   /* ============ ФОРМА / СОБЫТИЯ ============ */
 
   function initReceiveForm() {
     const form = document.getElementById('receiveForm');
-    const trackInput = document.getElementById('trackInput');
     const weightInput = document.getElementById('weightInput');
     const priceInput = document.getElementById('priceInput');
     const errEl = document.getElementById('receiveError');
     const okEl = document.getElementById('receiveSuccess');
+
+    resetTrackFields();
 
     const syncPriceFromWeight = () => {
       updatePriceFormula();
@@ -2574,39 +3068,37 @@
       state.priceManual = true;
     });
 
-    // USB-сканер: Enter → приёмка (submit) или переход к следующему полю
-    trackInput?.addEventListener('keydown', (e) => {
+    // Если в поле клиента случайно просканировали трек — переносим в трек-поле
+    document.getElementById('clientInput')?.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
       e.preventDefault();
+      const raw = String(e.target.value || '').trim();
+      const asTrack = parseTrackFromScan(raw) ||
+        (/^\d{7,}$/.test(raw.replace(/\s+/g, '')) ? normalizeTrack(raw) : null);
 
-      const track = normalizeTrack(trackInput.value);
-      if (!track) {
-        focusScannerField();
+      if (asTrack && (asTrack.length > 8 || /[A-Z]/i.test(asTrack))) {
+        e.target.value = '';
+        const current = getActiveTrackInput();
+        if (current && !String(current.value || '').trim()) {
+          current.value = asTrack;
+          current.focus();
+        } else {
+          const next = appendTrackField(asTrack);
+          if (next) next.focus();
+        }
+        showToast(t('toast_scan_track'), 1000);
         return;
       }
+    });
 
-      trackInput.value = track;
-      form.dataset.lastTrack = track;
-
-      const clientVal = String(document.getElementById('clientInput')?.value || '').trim();
-      const weightVal = String(weightInput?.value || '').trim();
-      const priceVal = String(priceInput?.value || '').trim();
-
-      if (clientVal && weightVal && priceVal) {
-        form.requestSubmit();
-        return;
-      }
-
-      // Трек принят — сразу чистим поле под следующий скан, трек держим в dataset
-      trackInput.value = '';
-      showToast(track);
-
-      if (!clientVal) {
-        document.getElementById('clientInput')?.focus();
-      } else if (!weightVal) {
-        weightInput?.focus();
-      } else {
-        priceInput?.focus();
+    // Блокируем Enter на форме, кроме явного submit кнопкой
+    form?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      if (e.target && e.target.id === 'addShipmentBtn') return;
+      if (e.target && e.target.classList && e.target.classList.contains('track-field__input')) return;
+      // Enter в client/weight/price не сабмитит форму случайно от сканера
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON')) {
+        e.preventDefault();
       }
     });
 
@@ -2619,42 +3111,57 @@
       if (submitBtn) submitBtn.disabled = true;
 
       try {
-        const trackValue = trackInput?.value || form.dataset.lastTrack || '';
-        const result = await addShipment({
-          track: trackValue,
-          clientCode: document.getElementById('clientInput')?.value,
-          weightKg: weightInput?.value,
-          priceSom: priceInput?.value
-        });
-
-        if (!result.ok) {
-          showMessage(errEl, result.error);
-          if (!trackInput?.value && form.dataset.lastTrack) {
-            trackInput.value = form.dataset.lastTrack;
-          }
+        const collected = collectReceiveTracks();
+        if (!collected.ok) {
+          showMessage(errEl, collected.error);
           return;
         }
 
-        const okText = t('added_ok', { track: result.shipment.track });
+        const clientCode = document.getElementById('clientInput')?.value;
+        const weightKg = weightInput?.value;
+        const priceSom = priceInput?.value;
+
+        let okCount = 0;
+        let lastError = '';
+        const addedTracks = [];
+
+        for (const track of collected.tracks) {
+          const result = await addShipment({
+            track: track,
+            clientCode: clientCode,
+            weightKg: weightKg,
+            priceSom: priceSom
+          });
+          if (result.ok) {
+            okCount += 1;
+            addedTracks.push(result.shipment.track);
+          } else {
+            lastError = result.error || 'error';
+          }
+        }
+
+        if (okCount === 0) {
+          showMessage(errEl, lastError || t('err_tracks'));
+          return;
+        }
+
+        const okText = okCount === 1
+          ? t('added_ok', { track: addedTracks[0] })
+          : t('added_ok_multi', { count: okCount });
+
+        showToast(okText, 1000);
         showMessage(okEl, okText);
-        alert(okText);
+
         form.reset();
-        delete form.dataset.lastTrack;
+        resetTrackFields();
         state.priceManual = false;
         updatePriceFormula();
         setScannerFocusTarget('track');
 
-        const row = document.querySelector(
-          '.shipments-table tbody tr[data-track="' + result.shipment.track + '"]'
-        );
-        if (row) {
-          row.classList.add('is-highlight');
-          row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          setTimeout(() => row.classList.remove('is-highlight'), 2400);
-        }
+        await reloadShipments();
       } finally {
         if (submitBtn) submitBtn.disabled = false;
-        focusScannerField();
+        setTimeout(focusScannerField, 50);
       }
     });
 
@@ -2710,7 +3217,6 @@
   }
 
   function initScannerButtons() {
-    document.getElementById('scanTrackBtn')?.addEventListener('click', () => openScanner('track'));
     document.getElementById('scanClientBtn')?.addEventListener('click', () => openScanner('client'));
     document.getElementById('quickIssueBtn')?.addEventListener('click', () => openScanner('quick'));
     document.getElementById('scannerClose')?.addEventListener('click', () => stopScanner());
@@ -2723,6 +3229,7 @@
       if (e.key !== 'Escape') return;
       if (state.scanner.mode) stopScanner();
       else if (state.issueModal.open) closeIssueModal();
+      else if (state.clientParcelsModal.open) closeClientParcelsModal();
       else if (!document.getElementById('settingsOverlay')?.hidden) closeSettings();
     });
   }
@@ -2759,6 +3266,7 @@
     initScannerButtons();
     initScannerFocus();
     initIssueModal();
+    initClientParcelsModal();
     initSectionNav();
     setActiveSection('ops');
 

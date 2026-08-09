@@ -160,27 +160,11 @@
         </div>
 
         <form class="receive-form" id="receiveForm" novalidate>
-          <label class="field">
+          <div class="field">
             <span class="field__label" data-i18n="track_label">Трек-код</span>
-            <div class="field__row">
-              <input
-                class="field__input field__input--mono"
-                id="trackInput"
-                type="text"
-                autocomplete="off"
-                data-i18n-placeholder="track_placeholder"
-                placeholder="CN2026118"
-                autofocus
-                required
-              >
-              <button type="button" class="scan-btn" id="scanTrackBtn" data-i18n-aria="scan_track_aria" aria-label="Сканировать трек-код" title="Scan">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M4 7V5a1 1 0 0 1 1-1h2M20 7V5a1 1 0 0 0-1-1h-2M4 17v2a1 1 0 0 0 1 1h2M20 17v2a1 1 0 0 1-1 1h-2"/>
-                  <path d="M7 9h2v6H7zM11 9h1v6h-1zM14 9h3v6h-3z"/>
-                </svg>
-              </button>
-            </div>
-          </label>
+            <div class="track-fields" id="trackFields"></div>
+            <p class="field__hint-text" data-i18n="track_multi_hint">Enter — следующее поле · Del — удалить · ☐ — трек нечитаемый</p>
+          </div>
 
           <label class="field">
             <span class="field__label" data-i18n="client_label">Код клиента</span>
@@ -493,6 +477,46 @@
       <div class="issue-actions">
         <button type="button" class="btn btn--ghost" id="issueSelectAllBtn" data-i18n="issue_select_all">Выбрать все</button>
         <button type="button" class="btn btn--primary" id="issueConfirmBtn" data-i18n="issue_confirm">Выдать выбранные</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ПОСЫЛКИ КЛИЕНТА ===== -->
+  <div class="modal-overlay" id="clientParcelsOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="clientParcelsTitle">
+    <div class="modal modal--issue modal--client-parcels">
+      <div class="modal__head">
+        <div>
+          <h2 class="modal__title" id="clientParcelsTitle" data-i18n="client_parcels_title">Посылки клиента</h2>
+          <p class="modal__subtitle" id="clientParcelsLabel">—</p>
+        </div>
+        <button type="button" class="scanner-close" id="clientParcelsClose" data-i18n-aria="close_aria" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="filter-tabs client-parcels-filters" id="clientParcelsFilters" role="tablist">
+        <button class="filter-tabs__btn is-active" data-filter="all" type="button" data-i18n="filter_all">Все</button>
+        <button class="filter-tabs__btn" data-filter="arrived" type="button" data-i18n="filter_warehouse">На складе</button>
+        <button class="filter-tabs__btn" data-filter="received" type="button" data-i18n="filter_issued">Выдано</button>
+      </div>
+
+      <div class="issue-list" id="clientParcelsList"></div>
+      <p class="table-empty" id="clientParcelsEmpty" data-i18n="client_parcels_empty" hidden>У клиента нет посылок</p>
+
+      <div class="issue-summary" id="clientParcelsSummary">
+        <div class="issue-summary__row">
+          <span data-i18n="issue_selected">Выбрано</span>
+          <strong id="clientParcelsCount">0</strong>
+        </div>
+        <div class="issue-summary__row issue-summary__row--total">
+          <span data-i18n="issue_pay">К оплате</span>
+          <strong id="clientParcelsTotal">0 сом</strong>
+        </div>
+      </div>
+
+      <div class="issue-actions">
+        <button type="button" class="btn btn--ghost" id="clientParcelsSelectArrived" data-i18n="issue_select_all">Выбрать все</button>
+        <button type="button" class="btn btn--primary" id="clientParcelsIssueBtn" data-i18n="issue_confirm">Выдать выбранные</button>
       </div>
     </div>
   </div>
