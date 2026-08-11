@@ -3,6 +3,8 @@
 
   const THEME_STORAGE_KEY = 'pandaCargo_theme';
   const LANG_STORAGE_KEY = 'pandaCargo_lang';
+  const LAYOUT_STORAGE_KEY = 'pandaCargo_layout';
+  const RECEIVE_DRAFT_KEY = 'pandaCargo_receive_draft';
   const DEVICE_TOKEN_KEY = 'device_token';
   const SETTINGS_KEY = 'pandaCargo_admin_settings';
   const ACCESS_FLAG_KEY = 'access_granted';
@@ -29,6 +31,8 @@
       aria_lang: 'Сменить язык',
       aria_theme: 'Переключить тему',
       aria_settings: 'Настройки',
+      aria_layout: 'ПК или телефон',
+      aria_smart_scan: 'Умный сканер',
       close_aria: 'Закрыть',
       scan_track_aria: 'Сканировать штрих-код трека',
       scan_client_aria: 'Сканировать QR клиента',
@@ -38,6 +42,26 @@
       footer: 'Panda Cargo — склад',
       not_found_title: 'Страница не найдена',
       not_found_text: 'Запрошенная страница не существует или была удалена.',
+      layout_pc: 'ПК',
+      layout_mobile: 'Тел',
+      layout_switch_pc: 'Переключить на ПК',
+      layout_switch_mobile: 'Переключить на телефон',
+      layout_switch_hint: 'Полная таблица и два столбца',
+      nav_issue: 'Выдача',
+      nav_receive: 'Приём',
+      nav_list: 'Список',
+      nav_more: 'Ещё',
+      nav_more_subtitle: 'Касса, отчёты и клиенты',
+      mobile_issue_title: 'Выдача',
+      mobile_issue_subtitle: 'Сканируйте QR клиента — система сама всё поймёт',
+      smart_scan: 'Умный сканер',
+      smart_scan_hint: 'QR клиента, трек или штрих-код — одно нажатие',
+      toast_scan_unknown: 'Код не распознан',
+      toast_scan_routed_track: 'Трек → приёмка',
+      toast_scan_routed_client: 'Клиент №{code}',
+      toast_draft_restored: 'Черновик приёмки восстановлен',
+      card_issue: 'Выдать',
+      card_select: 'Выбрать',
 
       stat_total: 'Всего',
       stat_warehouse: 'На складе',
@@ -166,6 +190,7 @@
 
       scanner_title: 'Сканер',
       scanner_hint_default: 'Наведите камеру на код',
+      scanner_hint_auto: 'Наведите на QR, трек или штрих-код — система сама определит',
       scanner_hint_track: 'Наведите камеру на штрих-код товара',
       scanner_hint_client: 'Наведите камеру на QR-код клиента',
       scanner_hint_quick: 'Наведите камеру на QR клиента — откроется окно выдачи',
@@ -204,6 +229,8 @@
       aria_lang: 'Тилди алмаштыруу',
       aria_theme: 'Теманы алмаштыруу',
       aria_settings: 'Жөндөөлөр',
+      aria_layout: 'ПК же телефон',
+      aria_smart_scan: 'Акылдуу сканер',
       close_aria: 'Жабуу',
       scan_track_aria: 'Трек штрих-кодун скандоо',
       scan_client_aria: 'Кардардын QR скандоо',
@@ -213,6 +240,26 @@
       footer: 'Panda Cargo — склад',
       not_found_title: 'Барак табылган жок',
       not_found_text: 'Суралган барак жок же өчүрүлгөн.',
+      layout_pc: 'ПК',
+      layout_mobile: 'Тел',
+      layout_switch_pc: 'ПК режимине өтүү',
+      layout_switch_mobile: 'Телефон режимине өтүү',
+      layout_switch_hint: 'Толук таблица жана эки тилке',
+      nav_issue: 'Берүү',
+      nav_receive: 'Кабыл алуу',
+      nav_list: 'Тизме',
+      nav_more: 'Дагы',
+      nav_more_subtitle: 'Касса, отчеттор жана кардарлар',
+      mobile_issue_title: 'Берүү',
+      mobile_issue_subtitle: 'Кардардын QR скандоңуз — система өзү түшүнөт',
+      smart_scan: 'Акылдуу сканер',
+      smart_scan_hint: 'QR, трек же штрих-код — бир басуу',
+      toast_scan_unknown: 'Код таанылган жок',
+      toast_scan_routed_track: 'Трек → кабыл алуу',
+      toast_scan_routed_client: 'Кардар №{code}',
+      toast_draft_restored: 'Кабыл алуу долбоору калыбына келтирилди',
+      card_issue: 'Берүү',
+      card_select: 'Тандоо',
 
       stat_total: 'Баары',
       stat_warehouse: 'Складда',
@@ -341,6 +388,7 @@
 
       scanner_title: 'Сканер',
       scanner_hint_default: 'Камераны кодго багыттаңыз',
+      scanner_hint_auto: 'QR, трек же штрих-кодго багыттаңыз — система өзү аныктайт',
       scanner_hint_track: 'Камераны товардын штрих-кодуна багыттаңыз',
       scanner_hint_client: 'Камераны кардардын QR кодуна багыттаңыз',
       scanner_hint_quick: 'Кардардын QR кодуна багыттаңыз — берүү терезеси ачылат',
@@ -379,6 +427,8 @@
 
   const state = {
     lang: document.documentElement.getAttribute('data-lang') === 'ky' ? 'ky' : 'ru',
+    layout: document.documentElement.getAttribute('data-layout') === 'mobile' ? 'mobile' : 'desktop',
+    mobileView: document.documentElement.getAttribute('data-mview') || 'issue',
     shipments: [],
     activeFilter: 'all',
     searchQuery: '',
@@ -397,6 +447,11 @@
       busy: false
     },
     scannerFocus: 'track',
+    wedge: {
+      buffer: '',
+      lastAt: 0,
+      timer: null
+    },
     clientsCache: [],
     clientsCacheAt: 0,
     activeSection: 'ops',
@@ -453,6 +508,14 @@
     const langCode = document.getElementById('langBtnCode');
     if (langCode) langCode.textContent = state.lang === 'ru' ? 'KG' : 'RU';
 
+    const layoutCode = document.getElementById('layoutBtnCode');
+    if (layoutCode) layoutCode.textContent = state.layout === 'mobile' ? t('layout_pc') : t('layout_mobile');
+
+    const moreLayoutStrong = document.querySelector('#moreLayoutBtn strong');
+    if (moreLayoutStrong) {
+      moreLayoutStrong.textContent = state.layout === 'mobile' ? t('layout_switch_pc') : t('layout_switch_mobile');
+    }
+
     const rateHint = document.getElementById('rateHint');
     if (rateHint) rateHint.textContent = t('rate_hint', { rate: PRICE_PER_KG });
 
@@ -467,6 +530,7 @@
     renderCashDay();
     updateBulkBar();
     if (state.issueModal.open) renderIssueModalSummary();
+    syncLayoutChrome();
   }
 
   function setLang(lang) {
@@ -482,6 +546,149 @@
   function setTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }
+
+  function isMobileLayout() {
+    return state.layout === 'mobile';
+  }
+
+  function syncLayoutChrome() {
+    const bottomNav = document.getElementById('bottomNav');
+    const scanFab = document.getElementById('scanFab');
+    const mobile = isMobileLayout();
+
+    if (bottomNav) bottomNav.hidden = !mobile || !state.unlocked;
+    if (scanFab) {
+      const showFab = mobile && state.unlocked &&
+        (state.mobileView === 'receive' || state.mobileView === 'list') &&
+        state.activeSection === 'ops';
+      scanFab.hidden = !showFab;
+    }
+
+    document.querySelectorAll('#bottomNav .bottom-nav__btn').forEach(btn => {
+      btn.classList.toggle('is-active', btn.dataset.mview === state.mobileView);
+    });
+
+    const layoutCode = document.getElementById('layoutBtnCode');
+    if (layoutCode) layoutCode.textContent = mobile ? t('layout_pc') : t('layout_mobile');
+  }
+
+  function setLayout(layout) {
+    state.layout = layout === 'mobile' ? 'mobile' : 'desktop';
+    document.documentElement.setAttribute('data-layout', state.layout);
+    localStorage.setItem(LAYOUT_STORAGE_KEY, state.layout);
+    if (state.layout === 'mobile') {
+      setMobileView(state.mobileView || 'issue');
+    } else {
+      document.getElementById('sectionMore') && (document.getElementById('sectionMore').hidden = true);
+      if (state.activeSection === 'more') setActiveSection('ops');
+      else setActiveSection(state.activeSection || 'ops');
+    }
+    syncLayoutChrome();
+    renderTable();
+  }
+
+  function toggleLayout() {
+    setLayout(state.layout === 'mobile' ? 'desktop' : 'mobile');
+  }
+
+  function setMobileView(view) {
+    const allowed = { issue: 1, receive: 1, list: 1, more: 1 };
+    const next = allowed[view] ? view : 'issue';
+    state.mobileView = next;
+    document.documentElement.setAttribute('data-mview', next);
+
+    const issuePanel = document.getElementById('mobileIssuePanel');
+    if (issuePanel) issuePanel.hidden = !(isMobileLayout() && next === 'issue');
+
+    if (next === 'more') {
+      setActiveSection('more');
+    } else {
+      setActiveSection('ops');
+      if (next === 'issue') {
+        state.scannerFocus = 'issue';
+      } else if (next === 'receive') {
+        state.scannerFocus = 'track';
+        setTimeout(focusScannerField, 40);
+      } else if (next === 'list') {
+        state.scannerFocus = 'issue';
+      }
+    }
+    syncLayoutChrome();
+    renderTable();
+  }
+
+  function buzz(ok) {
+    try {
+      if (navigator.vibrate) navigator.vibrate(ok ? [18] : [30, 40, 30]);
+    } catch (e) { /* ignore */ }
+  }
+
+  function flashEl(el) {
+    if (!el) return;
+    el.classList.remove('scan-flash');
+    void el.offsetWidth;
+    el.classList.add('scan-flash');
+  }
+
+  function saveReceiveDraft() {
+    try {
+      const tracks = [];
+      document.querySelectorAll('#trackFields .track-field__input').forEach(input => {
+        const v = String(input.value || '').trim();
+        if (v) tracks.push(v);
+      });
+      const draft = {
+        tracks: tracks,
+        client: document.getElementById('clientInput')?.value || '',
+        weight: document.getElementById('weightInput')?.value || '',
+        price: document.getElementById('priceInput')?.value || '',
+        priceManual: state.priceManual
+      };
+      if (!draft.tracks.length && !draft.client && !draft.weight && !draft.price) {
+        localStorage.removeItem(RECEIVE_DRAFT_KEY);
+        return;
+      }
+      localStorage.setItem(RECEIVE_DRAFT_KEY, JSON.stringify(draft));
+    } catch (e) { /* ignore */ }
+  }
+
+  function clearReceiveDraft() {
+    try { localStorage.removeItem(RECEIVE_DRAFT_KEY); } catch (e) { /* ignore */ }
+  }
+
+  function restoreReceiveDraft() {
+    let raw = '';
+    try { raw = localStorage.getItem(RECEIVE_DRAFT_KEY) || ''; } catch (e) { return; }
+    if (!raw) return;
+    let draft;
+    try { draft = JSON.parse(raw); } catch (e) { return; }
+    if (!draft || typeof draft !== 'object') return;
+
+    const tracks = Array.isArray(draft.tracks) ? draft.tracks.filter(Boolean) : [];
+    if (tracks.length) {
+      resetTrackFields();
+      tracks.forEach((track, i) => {
+        if (i === 0) {
+          const input = getActiveTrackInput();
+          if (input) input.value = track;
+        } else {
+          appendTrackField(track);
+        }
+      });
+      appendTrackField('');
+    }
+    const clientInput = document.getElementById('clientInput');
+    const weightInput = document.getElementById('weightInput');
+    const priceInput = document.getElementById('priceInput');
+    if (clientInput && draft.client) clientInput.value = draft.client;
+    if (weightInput && draft.weight) weightInput.value = draft.weight;
+    if (priceInput && draft.price) {
+      priceInput.value = draft.price;
+      state.priceManual = Boolean(draft.priceManual);
+    }
+    updatePriceFormula();
+    showToast(t('toast_draft_restored'), 1600);
   }
 
   function pad2(n) {
@@ -852,6 +1059,8 @@
     const app = document.getElementById('app');
     if (app) app.hidden = false;
     state.unlocked = true;
+    syncLayoutChrome();
+    if (isMobileLayout()) setMobileView(state.mobileView || 'issue');
   }
 
   function hideApp() {
@@ -876,7 +1085,12 @@
     showApp();
     await reloadShipments();
     loadClientsCache(true).catch(() => {});
-    setScannerFocusTarget('track');
+    restoreReceiveDraft();
+    if (isMobileLayout()) {
+      setMobileView('issue');
+    } else {
+      setScannerFocusTarget('track');
+    }
   }
 
   function showDeviceAuthGate() {
@@ -1070,7 +1284,9 @@
         showApp();
         await reloadShipments();
         loadClientsCache(true).catch(() => {});
-        setScannerFocusTarget('track');
+        restoreReceiveDraft();
+        if (isMobileLayout()) setMobileView(state.mobileView || 'issue');
+        else setScannerFocusTarget('track');
       } catch (error) {
         showMessage(err, t('err_crypto'));
       }
@@ -1141,6 +1357,8 @@
     set('statWarehouse', String(arrived.length));
     set('statIssued', String(received.length));
     set('statDue', formatSom(due));
+    set('mobileStatWarehouse', String(arrived.length));
+    set('mobileStatDue', formatSom(due));
   }
 
   function getFilteredShipments() {
@@ -1235,6 +1453,7 @@
       }
       syncSelectAllCheckbox([]);
       updateBulkBar();
+      renderShipmentCards([]);
       return;
     }
 
@@ -1308,6 +1527,84 @@
 
     syncSelectAllCheckbox(list);
     updateBulkBar();
+    renderShipmentCards(list);
+  }
+
+  function renderShipmentCards(list) {
+    const cards = document.getElementById('shipmentCards');
+    const empty = document.getElementById('cardsEmpty');
+    if (!cards) return;
+
+    cards.innerHTML = '';
+    cards.hidden = !isMobileLayout();
+
+    if (!list || list.length === 0) {
+      if (empty) {
+        empty.hidden = !isMobileLayout();
+        empty.textContent = t('empty_shipments');
+      }
+      return;
+    }
+
+    if (empty) empty.hidden = true;
+
+    list.forEach(shipment => {
+      const canIssue = shipment.status === 'arrived';
+      const isSelected = state.selected.has(shipment.track);
+      const storageFee = getShipmentStorageFee(shipment);
+      const totalDue = getShipmentTotalDue(shipment);
+
+      const card = document.createElement('article');
+      card.className = 'shipment-card' + (isSelected ? ' is-selected' : '');
+      card.dataset.track = shipment.track;
+
+      card.innerHTML =
+        '<div class="shipment-card__top">' +
+          '<div class="shipment-card__track">' + escapeHtml(shipment.track) + '</div>' +
+          '<span class="badge badge--' + shipment.status + '">' +
+            (shipment.status === 'received' ? t('status_received') : t('status_arrived')) +
+          '</span>' +
+        '</div>' +
+        '<div class="shipment-card__meta">' +
+          '<div><span data-i18n-skip="1">' + t('col_client') + '</span><strong>' +
+            escapeHtml(formatClientLabel(shipment.clientCode)) + '</strong></div>' +
+          '<div><span>' + t('col_weight') + '</span><strong>' + shipment.weightKg + ' ' + t('kg') + '</strong></div>' +
+          '<div><span>' + t('col_price') + '</span><strong>' + formatSom(totalDue) + '</strong></div>' +
+          '<div><span>' + t('col_storage') + '</span><strong>' + escapeHtml(formatStorageLabel(shipment)) + '</strong></div>' +
+        '</div>' +
+        '<div class="shipment-card__actions"></div>';
+
+      const actions = card.querySelector('.shipment-card__actions');
+
+      if (canIssue) {
+        const selectBtn = document.createElement('button');
+        selectBtn.type = 'button';
+        selectBtn.className = 'btn btn--sm btn--ghost';
+        selectBtn.textContent = isSelected ? t('bulk_clear') : t('card_select');
+        selectBtn.addEventListener('click', () => {
+          if (state.selected.has(shipment.track)) state.selected.delete(shipment.track);
+          else state.selected.add(shipment.track);
+          renderTable();
+        });
+        actions.appendChild(selectBtn);
+
+        const issueBtn = document.createElement('button');
+        issueBtn.type = 'button';
+        issueBtn.className = 'btn btn--sm btn--issue';
+        issueBtn.textContent = t('card_issue');
+        issueBtn.addEventListener('click', () => openIssueModal([shipment], shipment.clientCode));
+        actions.appendChild(issueBtn);
+      } else {
+        const done = document.createElement('button');
+        done.type = 'button';
+        done.className = 'btn btn--sm btn--ghost';
+        done.textContent = t('issued_btn');
+        done.disabled = true;
+        actions.appendChild(done);
+      }
+
+      cards.appendChild(card);
+    });
   }
 
   function refreshUI() {
@@ -2033,18 +2330,25 @@
       ops: 'sectionOps',
       clients: 'sectionClients',
       cash: 'sectionCash',
-      report: 'sectionReport'
+      report: 'sectionReport',
+      more: 'sectionMore'
     };
 
     Object.keys(map).forEach(key => {
       const el = document.getElementById(map[key]);
-      if (el) el.hidden = key !== id;
+      if (!el) return;
+      if (key === 'more') {
+        el.hidden = !(isMobileLayout() && id === 'more');
+        return;
+      }
+      el.hidden = key !== id;
     });
 
     if (id === 'clients') renderClients();
     if (id === 'cash') renderCashDay();
     if (id === 'report') renderReport();
     if (id === 'ops') setTimeout(focusScannerField, 50);
+    syncLayoutChrome();
   }
 
   function initSectionNav() {
@@ -2431,6 +2735,199 @@
     return cleaned.length >= 5 ? cleaned : null;
   }
 
+  /**
+   * Единый классификатор любого скана (камера / пистолет / ручной ввод).
+   * Приоритет: QR клиента → pickup/код клиента → трек/штрих.
+   */
+  function classifyScan(raw) {
+    const text = String(raw || '').trim();
+    if (!text) return { type: 'unknown', raw: text };
+
+    const clientParsed = parseClientFromScan(text);
+    if (clientParsed != null) {
+      if (typeof clientParsed === 'string') {
+        return { type: 'client', raw: text, clientCode: clientParsed, parsed: clientParsed };
+      }
+      if (clientParsed.userId || clientParsed.pickupCode) {
+        return { type: 'client', raw: text, parsed: clientParsed };
+      }
+    }
+
+    const track = parseTrackFromScan(text);
+    if (track) return { type: 'track', raw: text, track: track };
+
+    return { type: 'unknown', raw: text };
+  }
+
+  async function resolveClientCodeFromParsed(parsed) {
+    if (!parsed) return null;
+    if (typeof parsed === 'string') return parsed;
+
+    if (parsed.userId && parsed.pickupCode) {
+      const day = parsed.day || localDayKey();
+      if (!verifyDailyPickupCode(parsed.userId, parsed.pickupCode, day)) return null;
+      const clients = await loadClientsCache(false);
+      const client = clients.find(c =>
+        c.userId === parsed.userId || String(c.id) === parsed.userId
+      );
+      return client ? client.clientCode : null;
+    }
+
+    if (parsed.pickupCode) {
+      const client = await findClientByPickupCode(parsed.pickupCode);
+      return client ? client.clientCode : null;
+    }
+
+    if (parsed.userId) {
+      const clients = await loadClientsCache(false);
+      const client = clients.find(c =>
+        c.userId === parsed.userId || String(c.id) === parsed.userId
+      );
+      return client ? client.clientCode : null;
+    }
+
+    if (parsed.clientCode) return normalizeClientCode(parsed.clientCode);
+    return null;
+  }
+
+  function applyTrackToReceive(track) {
+    const value = normalizeTrack(track);
+    if (!value) return false;
+
+    if (isMobileLayout() && state.mobileView !== 'receive') {
+      setMobileView('receive');
+    }
+
+    const current = getActiveTrackInput();
+    if (current && !String(current.value || '').trim()) {
+      current.value = value;
+      current.disabled = false;
+      const row = current.closest('.track-field');
+      const check = row && row.querySelector('.track-field__check');
+      if (check) check.classList.remove('is-on');
+      current.classList.remove('is-blind');
+      flashEl(current);
+      current.focus();
+    } else {
+      const next = appendTrackField(value);
+      if (next) {
+        flashEl(next);
+        next.focus();
+      }
+      appendTrackField('');
+    }
+
+    setScannerFocusTarget('track');
+    saveReceiveDraft();
+    return true;
+  }
+
+  async function applyClientToReceive(code) {
+    const normalized = normalizeClientCode(code);
+    if (!normalized) return false;
+
+    if (isMobileLayout() && state.mobileView !== 'receive' && state.mobileView !== 'issue') {
+      setMobileView('receive');
+    }
+
+    const input = document.getElementById('clientInput');
+    if (input) {
+      input.value = formatClientLabel(normalized);
+      flashEl(input);
+      input.focus();
+    }
+    saveReceiveDraft();
+    return true;
+  }
+
+  /**
+   * Умный роутер: сам решает, куда положить скан.
+   * context: 'auto' | 'receive' | 'issue' | 'force-issue'
+   */
+  async function routeSmartScan(raw, context) {
+    const ctx = context || 'auto';
+    const classified = classifyScan(raw);
+
+    if (classified.type === 'unknown') {
+      buzz(false);
+      showToast(t('toast_scan_unknown'));
+      return { ok: false, type: 'unknown' };
+    }
+
+    const preferIssue =
+      ctx === 'force-issue' ||
+      ctx === 'issue' ||
+      state.scannerFocus === 'issue' ||
+      state.issueModal.open ||
+      (isMobileLayout() && state.mobileView === 'issue') ||
+      (isMobileLayout() && state.mobileView === 'list');
+
+    if (classified.type === 'client') {
+      if (preferIssue || ctx === 'auto') {
+        // На выдаче / в авто: клиентский код → окно выдачи
+        if (preferIssue || ctx === 'force-issue' || ctx === 'issue' ||
+            (ctx === 'auto' && (state.scannerFocus === 'issue' || (isMobileLayout() && state.mobileView === 'issue')))) {
+          await runIssueLookup(raw, { autoIssue: false });
+          buzz(true);
+          return { ok: true, type: 'client-issue' };
+        }
+      }
+
+      // На приёмке — в поле клиента
+      if (ctx === 'receive' || (isMobileLayout() && state.mobileView === 'receive') || state.scannerFocus === 'track') {
+        const code = await resolveClientCodeFromParsed(classified.parsed || classified.clientCode);
+        if (!code) {
+          buzz(false);
+          showToast(t('err_qr_invalid'));
+          return { ok: false, type: 'client' };
+        }
+        await applyClientToReceive(code);
+        buzz(true);
+        showToast(t('toast_scan_routed_client', { code: formatClientLabel(code) }), 1200);
+        return { ok: true, type: 'client-receive' };
+      }
+
+      // fallback: выдача
+      await runIssueLookup(raw, { autoIssue: false });
+      buzz(true);
+      return { ok: true, type: 'client-issue' };
+    }
+
+    if (classified.type === 'track') {
+      // Если ищем выдачу и трек есть в базе — открыть выдачу этой посылки
+      if (preferIssue) {
+        const existing = state.shipments.find(s => s.track === classified.track);
+        if (existing) {
+          if (existing.status === 'arrived') {
+            openIssueModal([existing], existing.clientCode);
+            buzz(true);
+            showToast(t('toast_scan_track'), 1000);
+            return { ok: true, type: 'track-issue' };
+          }
+        }
+        // иначе положим в поиск / фильтр
+        state.searchQuery = classified.track;
+        const searchInput = document.getElementById('searchInput');
+        const mobileSearch = document.getElementById('mobileSearchInput');
+        if (searchInput) searchInput.value = classified.track;
+        if (mobileSearch) mobileSearch.value = classified.track;
+        renderTable();
+        buzz(true);
+        showToast(t('toast_scan_track'), 1000);
+        return { ok: true, type: 'track-search' };
+      }
+
+      applyTrackToReceive(classified.track);
+      buzz(true);
+      showToast(t('toast_scan_routed_track'), 1000);
+      return { ok: true, type: 'track-receive' };
+    }
+
+    buzz(false);
+    showToast(t('toast_scan_unknown'));
+    return { ok: false, type: 'unknown' };
+  }
+
   async function resolveIssueLookup(raw) {
     const text = String(raw || '').trim();
     if (!text) return { ok: false, reason: 'empty' };
@@ -2645,6 +3142,8 @@
     if (state.issueModal.open) return;
     if (state.clientParcelsModal.open) return;
     if (state.activeSection !== 'ops') return;
+    if (isMobileLayout() && state.mobileView === 'issue') return;
+    if (isMobileLayout() && state.mobileView === 'more') return;
     if (document.getElementById('settingsOverlay') && !document.getElementById('settingsOverlay').hidden) return;
     if (document.getElementById('pinOverlay') && !document.getElementById('pinOverlay').hidden) return;
     if (document.getElementById('deviceAuthOverlay') && !document.getElementById('deviceAuthOverlay').hidden) return;
@@ -2769,7 +3268,8 @@
 
     await stopScanner();
 
-    state.scanner.mode = mode;
+    const scanMode = mode || 'auto';
+    state.scanner.mode = scanMode;
     const overlay = document.getElementById('scannerOverlay');
     const hint = document.getElementById('scannerHint');
     const title = document.getElementById('scannerTitle');
@@ -2778,10 +3278,10 @@
     if (title) title.textContent = t('scanner_title');
 
     const hintKey =
-      mode === 'track' ? 'scanner_hint_track' :
-      mode === 'client' ? 'scanner_hint_client' :
-      mode === 'quick' ? 'scanner_hint_quick' :
-      'scanner_hint_default';
+      scanMode === 'track' ? 'scanner_hint_track' :
+      scanMode === 'client' ? 'scanner_hint_client' :
+      scanMode === 'quick' ? 'scanner_hint_quick' :
+      'scanner_hint_auto';
 
     if (hint) hint.textContent = t(hintKey);
     setScannerError('');
@@ -2803,7 +3303,7 @@
       state.scanner.busy = true;
 
       try {
-        await handleScanResult(mode, decodedText);
+        await handleScanResult(scanMode, decodedText);
       } finally {
         await stopScanner();
       }
@@ -2824,70 +3324,166 @@
   }
 
   async function handleScanResult(mode, raw) {
+    if (mode === 'auto' || !mode) {
+      let ctx = 'auto';
+      if (isMobileLayout()) {
+        if (state.mobileView === 'issue') ctx = 'force-issue';
+        else if (state.mobileView === 'receive') ctx = 'receive';
+        else if (state.mobileView === 'list') ctx = 'issue';
+      } else if (state.scannerFocus === 'issue') {
+        ctx = 'issue';
+      } else if (state.scannerFocus === 'track') {
+        ctx = 'receive';
+      }
+      await routeSmartScan(raw, ctx);
+      return;
+    }
+
     if (mode === 'track') {
       const track = parseTrackFromScan(raw) || normalizeTrack(raw);
       if (!track) {
+        buzz(false);
         showToast(t('err_not_found'));
         return;
       }
-      const input = getActiveTrackInput();
-      if (input) {
-        input.value = track;
-        input.disabled = false;
-        const row = input.closest('.track-field');
-        const check = row && row.querySelector('.track-field__check');
-        if (check) check.classList.remove('is-on');
-        input.classList.remove('is-blind');
-        input.focus();
-      }
-      setScannerFocusTarget('track');
+      applyTrackToReceive(track);
+      buzz(true);
       showToast(t('toast_scan_track'), 1200);
       return;
     }
 
     if (mode === 'client') {
       const parsed = parseClientFromScan(raw);
-      let code = null;
-
-      if (typeof parsed === 'string') {
-        code = parsed;
-      } else if (parsed && parsed.userId && parsed.pickupCode) {
-        const day = parsed.day || localDayKey();
-        if (verifyDailyPickupCode(parsed.userId, parsed.pickupCode, day)) {
-          const clients = await loadClientsCache(false);
-          const client = clients.find(c =>
-            c.userId === parsed.userId || String(c.id) === parsed.userId
-          );
-          code = client ? client.clientCode : null;
-        }
-      } else if (parsed && parsed.pickupCode) {
-        const client = await findClientByPickupCode(parsed.pickupCode);
-        code = client ? client.clientCode : null;
-      } else if (parsed && parsed.userId) {
-        const clients = await loadClientsCache(false);
-        const client = clients.find(c =>
-          c.userId === parsed.userId || String(c.id) === parsed.userId
-        );
-        code = client ? client.clientCode : null;
-      }
-
+      const code = await resolveClientCodeFromParsed(parsed);
       if (!code) {
+        buzz(false);
         showToast(t('err_qr_invalid'));
         return;
       }
-      const input = document.getElementById('clientInput');
-      if (input) {
-        input.value = formatClientLabel(code);
-        input.focus();
-      }
+      await applyClientToReceive(code);
+      buzz(true);
       showToast(t('toast_scan_client'), 1200);
       return;
     }
 
     if (mode === 'quick') {
       await runIssueLookup(raw, { autoIssue: false });
+      buzz(true);
       setScannerFocusTarget('issue');
     }
+  }
+
+  /* ============ ПИСТОЛЕТ / USB-СКАНЕР (keyboard wedge) ============ */
+
+  function isTypingInEditable(el) {
+    if (!el || !(el instanceof Element)) return false;
+    const tag = el.tagName;
+    if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    if (tag === 'INPUT') {
+      const type = (el.getAttribute('type') || 'text').toLowerCase();
+      if (type === 'checkbox' || type === 'radio' || type === 'button' || type === 'submit') return false;
+      return true;
+    }
+    return el.isContentEditable;
+  }
+
+  function flushWedgeBuffer() {
+    const raw = String(state.wedge.buffer || '').trim();
+    state.wedge.buffer = '';
+    state.wedge.lastAt = 0;
+    if (state.wedge.timer) {
+      clearTimeout(state.wedge.timer);
+      state.wedge.timer = null;
+    }
+    if (!raw || raw.length < 3) return;
+    if (!state.unlocked) return;
+    if (state.scanner.mode) return;
+
+    // Убираем «хвост» скана из активного поля — роутер сам положит куда надо
+    const active = document.activeElement;
+    if (active && typeof active.value === 'string' && active.value) {
+      const val = active.value;
+      if (val.endsWith(raw)) {
+        active.value = val.slice(0, val.length - raw.length);
+      } else {
+        const cleanedVal = val.replace(/\s+/g, '');
+        const cleanedRaw = raw.replace(/\s+/g, '');
+        if (cleanedVal.toUpperCase().endsWith(cleanedRaw.toUpperCase())) {
+          // грубая очистка: оставляем префикс до совпадения
+          const idx = val.toUpperCase().lastIndexOf(raw.toUpperCase().slice(0, Math.min(4, raw.length)));
+          if (idx >= 0) active.value = val.slice(0, idx);
+          else active.value = '';
+        }
+      }
+    }
+
+    routeSmartScan(raw, 'auto');
+  }
+
+  function initHardwareScanner() {
+    document.addEventListener('keydown', (e) => {
+      if (!state.unlocked) return;
+      if (state.scanner.mode) return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      const active = document.activeElement;
+      const inPin =
+        active && active.closest &&
+        (active.closest('#pinOverlay') || active.closest('#deviceAuthOverlay') || active.closest('#settingsOverlay'));
+      if (inPin) return;
+
+      const now = Date.now();
+      const gap = now - (state.wedge.lastAt || 0);
+
+      // Enter завершает скан пистолета
+      if (e.key === 'Enter') {
+        if (state.wedge.buffer && state.wedge.buffer.length >= 3 && gap < 120) {
+          e.preventDefault();
+          e.stopPropagation();
+          flushWedgeBuffer();
+          return;
+        }
+        // Медленный Enter в обычном поле — не трогаем
+        state.wedge.buffer = '';
+        return;
+      }
+
+      if (e.key === 'Escape' || e.key === 'Tab') {
+        state.wedge.buffer = '';
+        return;
+      }
+
+      if (e.key.length !== 1) return;
+
+      // Быстрый ввод = сканер. Медленный = человек.
+      if (gap > 80 && state.wedge.buffer) {
+        // Если пользователь печатает в поле — сбрасываем буфер сканера
+        if (isTypingInEditable(active)) {
+          state.wedge.buffer = '';
+          state.wedge.lastAt = 0;
+          return;
+        }
+      }
+
+      // Если фокус в weight/price — не перехватываем обычный ввод
+      if (active && (active.id === 'weightInput' || active.id === 'priceInput' || active.id === 'settingsPinInput')) {
+        state.wedge.buffer = '';
+        return;
+      }
+
+      state.wedge.lastAt = now;
+      state.wedge.buffer += e.key;
+
+      if (state.wedge.timer) clearTimeout(state.wedge.timer);
+      state.wedge.timer = setTimeout(() => {
+        // Некоторые сканеры не шлют Enter — заберём по таймауту, если буфер длинный
+        if (state.wedge.buffer.length >= 8) flushWedgeBuffer();
+        else state.wedge.buffer = '';
+      }, 140);
+
+      // Если похоже на скан в поле трека/поиска — не даём символам «размазаться» неправильно:
+      // оставляем native input для совместимости, роутер сработает на Enter.
+    }, true);
   }
 
   /* ============ МУЛЬТИ-ТРЕК ПРИЁМКА ============ */
@@ -3179,6 +3775,7 @@
         resetTrackFields();
         state.priceManual = false;
         updatePriceFormula();
+        clearReceiveDraft();
         setScannerFocusTarget('track');
 
         await reloadShipments();
@@ -3188,40 +3785,10 @@
       }
     });
 
+    form?.addEventListener('input', () => saveReceiveDraft());
+    form?.addEventListener('change', () => saveReceiveDraft());
+
     updatePriceFormula();
-  }
-
-  function initSearchAndFilters() {
-    const searchInput = document.getElementById('searchInput');
-
-    document.getElementById('searchForm')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const raw = searchInput?.value || '';
-      if (!raw.trim()) return;
-
-      await runIssueLookup(raw, { autoIssue: false });
-
-      if (searchInput) searchInput.value = '';
-      setScannerFocusTarget('issue');
-      focusScannerField();
-    });
-
-    // Live filter for typed queries (не для 6-значного кода — ждём Enter)
-    searchInput?.addEventListener('input', (e) => {
-      const val = e.target.value;
-      if (isPickupCodeInput(val)) return;
-      state.searchQuery = val;
-      renderTable();
-    });
-
-    document.getElementById('filterTabs')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('.filter-tabs__btn');
-      if (!btn) return;
-      document.querySelectorAll('.filter-tabs__btn').forEach(b => b.classList.remove('is-active'));
-      btn.classList.add('is-active');
-      state.activeFilter = btn.dataset.filter || 'all';
-      renderTable();
-    });
   }
 
   function initBulkActions() {
@@ -3240,8 +3807,11 @@
   }
 
   function initScannerButtons() {
-    document.getElementById('scanClientBtn')?.addEventListener('click', () => openScanner('client'));
-    document.getElementById('quickIssueBtn')?.addEventListener('click', () => openScanner('quick'));
+    document.getElementById('scanClientBtn')?.addEventListener('click', () => openScanner('auto'));
+    document.getElementById('quickIssueBtn')?.addEventListener('click', () => openScanner('auto'));
+    document.getElementById('smartScanBtn')?.addEventListener('click', () => openScanner('auto'));
+    document.getElementById('receiveSmartScanBtn')?.addEventListener('click', () => openScanner('auto'));
+    document.getElementById('scanFab')?.addEventListener('click', () => openScanner('auto'));
     document.getElementById('scannerClose')?.addEventListener('click', () => stopScanner());
 
     document.getElementById('scannerOverlay')?.addEventListener('click', (e) => {
@@ -3264,6 +3834,63 @@
     });
 
     document.getElementById('langBtn')?.addEventListener('click', toggleLang);
+    document.getElementById('layoutBtn')?.addEventListener('click', toggleLayout);
+    document.getElementById('moreLayoutBtn')?.addEventListener('click', toggleLayout);
+  }
+
+  function initMobileNav() {
+    document.getElementById('bottomNav')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.bottom-nav__btn');
+      if (!btn) return;
+      setMobileView(btn.dataset.mview || 'issue');
+    });
+
+    document.getElementById('sectionMore')?.addEventListener('click', (e) => {
+      const link = e.target.closest('.more-link[data-section]');
+      if (!link) return;
+      setActiveSection(link.dataset.section || 'clients');
+    });
+  }
+
+  function initSearchAndFilters() {
+    const searchInput = document.getElementById('searchInput');
+    const mobileSearchInput = document.getElementById('mobileSearchInput');
+
+    const runSearch = async (raw, inputEl) => {
+      if (!String(raw || '').trim()) return;
+      await routeSmartScan(raw, 'force-issue');
+      if (inputEl) inputEl.value = '';
+      setScannerFocusTarget('issue');
+    };
+
+    document.getElementById('searchForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await runSearch(searchInput?.value || '', searchInput);
+    });
+
+    document.getElementById('mobileSearchForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await runSearch(mobileSearchInput?.value || '', mobileSearchInput);
+    });
+
+    // Live filter for typed queries (не для 6-значного кода — ждём Enter)
+    const onLiveFilter = (e) => {
+      const val = e.target.value;
+      if (isPickupCodeInput(val)) return;
+      state.searchQuery = val;
+      renderTable();
+    };
+    searchInput?.addEventListener('input', onLiveFilter);
+    mobileSearchInput?.addEventListener('input', onLiveFilter);
+
+    document.getElementById('filterTabs')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.filter-tabs__btn');
+      if (!btn) return;
+      document.querySelectorAll('.filter-tabs__btn').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      state.activeFilter = btn.dataset.filter || 'all';
+      renderTable();
+    });
   }
 
   /* ============ СТАРТ ============ */
@@ -3288,10 +3915,13 @@
     initReportUI();
     initScannerButtons();
     initScannerFocus();
+    initHardwareScanner();
     initIssueModal();
     initClientParcelsModal();
     initSectionNav();
-    setActiveSection('ops');
+    initMobileNav();
+    if (isMobileLayout()) setMobileView(state.mobileView || 'issue');
+    else setActiveSection('ops');
 
     if (!isDeviceAuthorized()) {
       hideAllGates();

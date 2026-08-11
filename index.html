@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Panda Cargo — Админ</title>
   <script>
     (function () {
@@ -35,6 +35,14 @@
       var lang = (savedLang === 'ky' || savedLang === 'ru') ? savedLang : 'ru';
       document.documentElement.setAttribute('lang', lang);
       document.documentElement.setAttribute('data-lang', lang);
+
+      var savedLayout = localStorage.getItem('pandaCargo_layout');
+      var preferMobile = window.matchMedia && window.matchMedia('(max-width: 820px)').matches;
+      var layout = (savedLayout === 'mobile' || savedLayout === 'desktop')
+        ? savedLayout
+        : (preferMobile ? 'mobile' : 'desktop');
+      document.documentElement.setAttribute('data-layout', layout);
+      document.documentElement.setAttribute('data-mview', 'issue');
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -79,6 +87,18 @@
       </div>
 
       <div class="topbar__actions">
+        <button class="layout-btn" id="layoutBtn" type="button" data-i18n-aria="aria_layout" aria-label="ПК / телефон">
+          <svg viewBox="0 0 24 24" class="layout-icon layout-icon--desktop" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="12" rx="1.5"/>
+            <path d="M8 20h8M12 16v4"/>
+          </svg>
+          <svg viewBox="0 0 24 24" class="layout-icon layout-icon--mobile" aria-hidden="true">
+            <rect x="7" y="2.5" width="10" height="19" rx="2"/>
+            <path d="M11 18.5h2"/>
+          </svg>
+          <span class="layout-btn__code" id="layoutBtnCode">ПК</span>
+        </button>
+
         <button class="lang-btn" id="langBtn" type="button" data-i18n-aria="aria_lang" aria-label="Language">
           <span class="lang-btn__code" id="langBtnCode">KG</span>
         </button>
@@ -150,13 +170,58 @@
     </nav>
 
     <div class="section-view" id="sectionOps">
+
+    <!-- Мобильный экран выдачи -->
+    <section class="panel panel--mobile-issue" id="mobileIssuePanel" hidden>
+      <div class="panel__head">
+        <h1 class="panel__title" data-i18n="mobile_issue_title">Выдача</h1>
+        <p class="panel__subtitle" data-i18n="mobile_issue_subtitle">Сканируйте QR клиента — система сама всё поймёт</p>
+      </div>
+      <button type="button" class="btn btn--accent btn--block btn--xl" id="smartScanBtn">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="btn__icon">
+          <path d="M4 7V5a1 1 0 0 1 1-1h2M20 7V5a1 1 0 0 0-1-1h-2M4 17v2a1 1 0 0 0 1 1h2M20 17v2a1 1 0 0 1-1 1h-2"/>
+          <rect x="7" y="7" width="4" height="4" rx="0.5"/>
+          <rect x="13" y="7" width="4" height="4" rx="0.5"/>
+          <rect x="7" y="13" width="4" height="4" rx="0.5"/>
+          <path d="M13 13h4v4h-4z"/>
+        </svg>
+        <span data-i18n="smart_scan">Умный сканер</span>
+      </button>
+      <p class="mobile-scan-hint" data-i18n="smart_scan_hint">QR клиента, трек или штрих-код — одно нажатие</p>
+      <form class="search-form search-form--mobile" id="mobileSearchForm">
+        <input
+          type="text"
+          id="mobileSearchInput"
+          class="search-form__input"
+          data-i18n-placeholder="search_placeholder"
+          placeholder="QR, код или трек"
+          autocomplete="off"
+          inputmode="text"
+        >
+        <button type="submit" class="search-form__btn" data-i18n="find">Найти</button>
+      </form>
+      <div class="mobile-issue-stats" id="mobileIssueStats">
+        <div class="mobile-issue-stat">
+          <span data-i18n="stat_warehouse">На складе</span>
+          <strong id="mobileStatWarehouse">0</strong>
+        </div>
+        <div class="mobile-issue-stat">
+          <span data-i18n="stat_due">К оплате (склад)</span>
+          <strong id="mobileStatDue">0 сом</strong>
+        </div>
+      </div>
+    </section>
+
     <div class="workspace">
 
       <!-- ===== ПРИЁМ ПОСЫЛОК ===== -->
       <section class="panel panel--receive" id="receivePanel">
-        <div class="panel__head">
-          <h1 class="panel__title" data-i18n="receive_title">Приём посылок</h1>
-          <p class="panel__subtitle" data-i18n="receive_subtitle">Сканируйте или введите данные вручную</p>
+        <div class="panel__head panel__head--row">
+          <div>
+            <h1 class="panel__title" data-i18n="receive_title">Приём посылок</h1>
+            <p class="panel__subtitle" data-i18n="receive_subtitle">Сканируйте или введите данные вручную</p>
+          </div>
+          <button type="button" class="btn btn--ghost btn--sm mobile-only" id="receiveSmartScanBtn" data-i18n="smart_scan">Умный сканер</button>
         </div>
 
         <form class="receive-form" id="receiveForm" novalidate>
@@ -278,7 +343,7 @@
 
         <div class="table-ticket">
           <div class="table-ticket__main">
-            <div class="table-wrap">
+            <div class="table-wrap desktop-only">
               <table class="shipments-table" id="shipmentsTable">
                 <thead>
                   <tr>
@@ -299,9 +364,11 @@
               </table>
               <p class="table-empty" id="tableEmpty" data-i18n="empty_shipments" hidden>Посылок пока нет</p>
             </div>
+            <div class="shipment-cards mobile-only" id="shipmentCards" hidden></div>
+            <p class="table-empty mobile-only" id="cardsEmpty" data-i18n="empty_shipments" hidden>Посылок пока нет</p>
           </div>
-          <div class="table-ticket__tear" aria-hidden="true"></div>
-          <div class="table-ticket__stub">
+          <div class="table-ticket__tear desktop-only" aria-hidden="true"></div>
+          <div class="table-ticket__stub desktop-only">
             <span class="table-ticket__stub-mark">PC</span>
           </div>
         </div>
@@ -309,6 +376,32 @@
 
     </div>
     </div>
+
+    <!-- ===== МОБИЛЬНОЕ «ЕЩЁ» ===== -->
+    <section class="section-view panel panel--more mobile-only" id="sectionMore" hidden>
+      <div class="panel__head">
+        <h2 class="panel__title" data-i18n="nav_more">Ещё</h2>
+        <p class="panel__subtitle" data-i18n="nav_more_subtitle">Касса, отчёты и клиенты</p>
+      </div>
+      <div class="more-links">
+        <button type="button" class="more-link" data-section="clients">
+          <strong data-i18n="nav_clients">Клиенты</strong>
+          <span data-i18n="clients_subtitle">Список клиентов и быстрый переход в WhatsApp</span>
+        </button>
+        <button type="button" class="more-link" data-section="cash">
+          <strong data-i18n="nav_cash">Касса за день</strong>
+          <span data-i18n="cash_subtitle">Аналитика выдачи с 00:00 до текущего момента</span>
+        </button>
+        <button type="button" class="more-link" data-section="report">
+          <strong data-i18n="nav_report">Отчёт за месяц</strong>
+          <span data-i18n="report_subtitle">Сводка по приёму, выдаче и выручке</span>
+        </button>
+        <button type="button" class="more-link" id="moreLayoutBtn">
+          <strong data-i18n="layout_switch_pc">Переключить на ПК</strong>
+          <span data-i18n="layout_switch_hint">Полная таблица и два столбца</span>
+        </button>
+      </div>
+    </section>
 
     <!-- ===== КЛИЕНТЫ ===== -->
     <section class="section-view panel panel--clients" id="sectionClients" hidden>
@@ -427,6 +520,34 @@
     </footer>
   </div>
 
+  <!-- ===== НИЖНЯЯ НАВИГАЦИЯ (МОБИЛЬНЫЙ РЕЖИМ) ===== -->
+  <nav class="bottom-nav mobile-only" id="bottomNav" hidden aria-label="Разделы">
+    <button type="button" class="bottom-nav__btn is-active" data-mview="issue">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7 10.5 16.5 5 11"/><path d="M21 12a9 9 0 1 1-3-6.7"/></svg>
+      <span data-i18n="nav_issue">Выдача</span>
+    </button>
+    <button type="button" class="bottom-nav__btn" data-mview="receive">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span data-i18n="nav_receive">Приём</span>
+    </button>
+    <button type="button" class="bottom-nav__btn" data-mview="list">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8.5 12 3 3 8.5v7L12 21l9-5.5v-7Z"/><path d="M12 12v9M3 8.5l9 3.5 9-3.5"/></svg>
+      <span data-i18n="nav_list">Список</span>
+    </button>
+    <button type="button" class="bottom-nav__btn" data-mview="more">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      <span data-i18n="nav_more">Ещё</span>
+    </button>
+  </nav>
+
+  <!-- FAB умный сканер -->
+  <button type="button" class="scan-fab mobile-only" id="scanFab" hidden data-i18n-aria="aria_smart_scan" aria-label="Умный сканер">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7V5a1 1 0 0 1 1-1h2M20 7V5a1 1 0 0 0-1-1h-2M4 17v2a1 1 0 0 0 1 1h2M20 17v2a1 1 0 0 1-1 1h-2"/>
+      <path d="M7 12h10"/>
+    </svg>
+  </button>
+
   <!-- ===== ПАНЕЛЬ МАССОВЫХ ДЕЙСТВИЙ ===== -->
   <div class="bulk-bar" id="bulkBar" hidden>
     <div class="bulk-bar__info">
@@ -530,7 +651,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <p class="scanner-modal__hint" id="scannerHint" data-i18n="scanner_hint_default">Наведите камеру на код</p>
+      <p class="scanner-modal__hint" id="scannerHint" data-i18n="scanner_hint_auto">Наведите на QR, трек или штрих-код — система сама определит</p>
       <div class="scanner-viewport" id="scannerViewport"></div>
       <p class="scanner-error" id="scannerError" hidden></p>
     </div>
