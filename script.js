@@ -1992,24 +1992,34 @@
       return [];
     }
 
-    state.clientsCache = (data || []).map(row => ({
-      id: row.id,
-      userId: row.user_id || row.id,
-      clientCode: normalizeClientCode(row.client_code),
-      email: row.email || '',
-      fullName: String(row.full_name || row.fullName || row.name || row.fio || '').trim(),
-      phone: String(row.phone || row.phone_number || row.tel || '').trim(),
-      createdAt: row.created_at || row.createdAt || ''
-    })).filter(c => c.clientCode || c.userId);
+    state.clientsCache = (data || []).map(row => {
+      const first = String(row.first_name || row.firstName || '').trim();
+      const last = String(row.last_name || row.lastName || '').trim();
+      const fromParts = [last, first].filter(Boolean).join(' ').trim();
+      const fullName = fromParts ||
+        String(row.full_name || row.fullName || row.name || row.fio || '').trim();
+
+      return {
+        id: row.id,
+        userId: row.user_id || row.id,
+        clientCode: normalizeClientCode(row.client_code),
+        email: row.email || '',
+        fullName: fullName,
+        phone: String(row.phone || row.phone_number || row.tel || '').trim(),
+        createdAt: row.created_at || row.createdAt || ''
+      };
+    }).filter(c => c.clientCode || c.userId);
 
     state.clientsCacheAt = Date.now();
     return state.clientsCache;
   }
 
   function mapClientDisplayName(client) {
-    if (client.fullName) return client.fullName;
-    if (client.email) return client.email;
-    return '—';
+    const name = String(client && client.fullName || '').trim();
+    if (!name) return '—';
+    // Не показывать служебный/любой email как «имя»
+    if (name.indexOf('@') !== -1) return '—';
+    return name;
   }
 
   async function renderClients() {
