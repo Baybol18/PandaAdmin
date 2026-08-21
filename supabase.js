@@ -41,7 +41,11 @@
     return {
       id: row.id,
       track: String(row.track_number || row.track || '').toUpperCase(),
-      clientCode: String(row.client_code || row.clientCode || '').replace(/\D/g, ''),
+      clientCode: (function (raw) {
+        var digits = String(raw || '').trim().replace(/\D/g, '');
+        if (!digits) return '';
+        return digits.replace(/^0+/, '') || '0';
+      })(row.client_code || row.clientCode),
       userId: String(row.user_id || row.userId || '').trim(),
       status: status,
       statusLabel: statusRaw || (status === 'received' ? STATUS_DELIVERED : STATUS_READY),

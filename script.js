@@ -841,7 +841,10 @@
   }
 
   function normalizeClientCode(value) {
-    return String(value || '').trim().replace(/\D/g, '');
+    const digits = String(value || '').trim().replace(/\D/g, '');
+    if (!digits) return '';
+    // 042 и 42 — один код; «000» → «0»
+    return digits.replace(/^0+/, '') || '0';
   }
 
   function formatClientLabel(code) {
@@ -1375,7 +1378,8 @@
       const qCode = normalizeClientCode(q);
       list = list.filter(s => {
         const trackMatch = s.track.includes(q);
-        const codeMatch = qCode && s.clientCode.includes(qCode);
+        const sCode = normalizeClientCode(s.clientCode);
+        const codeMatch = qCode && sCode && (sCode === qCode || sCode.includes(qCode));
         const labelMatch = formatClientLabel(s.clientCode).toUpperCase().includes(q);
         const userMatch = s.userId && s.userId.toUpperCase().includes(q);
         return trackMatch || codeMatch || labelMatch || userMatch;
