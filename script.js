@@ -9,7 +9,7 @@
   const SETTINGS_KEY = 'pandaCargo_admin_settings';
   const ACCESS_FLAG_KEY = 'access_granted';
   const ACCESS_SECRET = 'pd_sec_8f92k4x1';
-  const PRICE_PER_KG = 260;
+  const PRICE_PER_KG = 250;
   const STORAGE_FREE_DAYS = 5;
   const STORAGE_FEE_PER_DAY = 10;
   /** Код страны для WhatsApp (Кыргызстан) */
